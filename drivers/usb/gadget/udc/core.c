@@ -868,6 +868,8 @@ int usb_gadget_map_request_by_dev(struct device *dev,
 			dev_err(dev, "failed to map buffer\n");
 			return -EFAULT;
 		}
+
+		req->dma_mapped = 1;
 	}
 
 	return 0;
@@ -895,6 +897,7 @@ void usb_gadget_unmap_request_by_dev(struct device *dev,
 	} else if (req->dma != DMA_ERROR_CODE) {
 		dma_unmap_single(dev, req->dma, req->length,
 				is_in ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+		req->dma_mapped = 0;
 	}
 }
 EXPORT_SYMBOL_GPL(usb_gadget_unmap_request_by_dev);
