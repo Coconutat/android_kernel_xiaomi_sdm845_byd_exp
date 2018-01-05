@@ -11,7 +11,7 @@
  **NOT SUPPORT Mi 8 Standard Edition(dipper)!!!**    
  ***
  Based OS Version:Android Q Version  
- Based CAF Tag:LA.UM.6.3.r4-03000-sdm845.0  
+ Based CAF Tag:LA.UM.8.3.r1-05800-sdm845.0 
  ***
  **Kernel Feature**:  
    + Support **Mi 8 Explorer Edition & UD**  
