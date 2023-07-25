@@ -1,3 +1,3 @@
-# android_kernel_xiaomi_ursa
- Xiaomi Mi 8 Explorer Edition Kernel  
+# android_kernel_xiaomi_mi8_series
+ Xiaomi Mi 8 Series Kernel  
  Based Version:Android Q Version
