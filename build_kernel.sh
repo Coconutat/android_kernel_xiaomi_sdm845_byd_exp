@@ -21,7 +21,16 @@ make ARCH=arm64 O=out -j12 2>&1 | tee kernel_log-${date}.txt
 
 if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
 	echo "***Packing kernel...***"
-	cp out/arch/arm64/boot/Image.gz-dtb Image.gz-dtb
+	cp out/arch/arm64/boot/Image.gz tools/AnyKernel3/Image.gz
+	cp out/arch/arm64/boot/Image.gz-dtb tools/AnyKernel3/Image.gz-dtb
+	cp -vf tools/AnyKernel3_sh/anykernel.sh tools/AnyKernel3/
+	cp -vf tools/AnyKernel3_sh/banner tools/AnyKernel3/
+	cd tools/AnyKernel3
+	zip -r9 Mi8_UD_MIUI_12.5_Kernel-${date}.zip * > /dev/null
+	cd ../..
+	mv tools/AnyKernel3/Mi8_UD_MIUI_12.5_Kernel-${date}.zip Mi8_UD_MIUI_12.5_Kernel-${date}.zip
+	rm -rf tools/AnyKernel3/Image.gz
+	rm -rf tools/AnyKernel3/Image.gz-dtb
 	echo "***Sucessfully built kernel...***"
 	echo " "
 	exit 0
