@@ -2,8 +2,8 @@
 #设置环境
 
 # 交叉编译器路径
-export PATH=$PATH:/home/coconutat/github/GCC/64/bin
-export CROSS_COMPILE=aarch64-linux-android-
+export PATH=$PATH:/home/coconutat/github/ToolChains/bin
+export CROSS_COMPILE=aarch64-linux-gnu-
 export CONFIG_BUILD_ARM64_DT_OVERLAY=y
 
 export ARCH=arm64
@@ -15,7 +15,7 @@ fi
 
 date="$(date +%Y.%m.%d-%I:%M)"
 
-make ARCH=arm64 O=out stock_equuleus_user_defconfig
+make ARCH=arm64 O=out equuleus_user_regen_defconfig
 # 定义编译线程数
 make ARCH=arm64 O=out -j12 2>&1 | tee kernel_log-${date}.txt
 
