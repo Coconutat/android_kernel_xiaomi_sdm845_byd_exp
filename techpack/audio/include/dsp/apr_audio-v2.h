@@ -1001,7 +1001,7 @@ struct adm_cmd_connect_afe_port_v5 {
 #define AFE_PORT_ID_SLIMBUS_RANGE_SIZE	0xA
 
 /* Size of the range of port IDs for real-time proxy ports. */
-#define  AFE_PORT_ID_RT_PROXY_PORT_RANGE_SIZE	0x4
+#define  AFE_PORT_ID_RT_PROXY_PORT_RANGE_SIZE	0x2
 
 /* Size of the range of port IDs for pseudoports. */
 #define AFE_PORT_ID_PSEUDOPORT_RANGE_SIZE	0x5
@@ -1196,16 +1196,6 @@ struct adm_cmd_connect_afe_port_v5 {
  */
 #define AFE_PORT_ID_VOICE2_PLAYBACK_TX  0x8002
 #define AFE_PORT_ID_VOICE_PLAYBACK_TX   0x8005
-
-/*
- * Proxyport used for voice call data processing.
- * In cases like call-screening feature, where user can communicate
- * with caller with the help of "call screen" mode, and without
- * connecting the call with any HW input/output devices in the phon,
- * voice call can use Pseudo port to start voice data processing.
- */
-#define RT_PROXY_PORT_002_TX  0x2003
-#define RT_PROXY_PORT_002_RX  0x2002
 
 #define AFE_PORT_ID_PRIMARY_TDM_RX \
 	(AFE_PORT_ID_TDM_PORT_RANGE_START + 0x00)
@@ -3237,14 +3227,6 @@ struct afe_param_id_aptx_sync_mode {
  */
 #define AFE_DECODER_PARAM_ID_DEPACKETIZER_ID        0x00013235
 
-#define CAPI_V2_PARAM_ID_APTX_ENC_SWITCH_TO_MONO    0x0001332A
-
-struct aptx_channel_mode_param_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_set_param_v2 param;
-	struct afe_port_param_data_v2 pdata;
-	u32 channel_mode;
-} __packed;
 /*
  * Data format to send compressed data
  * is transmitted/received over Slimbus lines.
@@ -3648,7 +3630,6 @@ union afe_enc_config_data {
 struct afe_enc_config {
 	u32 format;
 	u32 scrambler_mode;
-	u32 mono_mode;
 	union afe_enc_config_data data;
 };
 
@@ -3687,18 +3668,6 @@ struct avs_enc_set_scrambler_param_t {
 	 *  0 : disable scrambler
 	 */
 	uint32_t enable_scrambler;
-};
-
-/*
- * Payload of the CAPI_V2_PARAM_ID_APTX_ENC_SWITCH_TO_MONO parameter.
- */
-struct afe_enc_set_channel_mode_param_t {
-	/*
-	*  Supported values:
-	*  1 : mono
-	*  2 : dual_mono
-	*/
-	u32 channel_mode;
 };
 
 /*
@@ -3757,7 +3726,6 @@ union afe_port_config {
 	struct avs_dec_depacketizer_id_param_t    dec_depkt_id_param;
 	struct afe_enc_level_to_bitrate_map_param_t    map_param;
 	struct afe_enc_dec_imc_info_param_t       imc_info_param;
-	struct afe_enc_set_channel_mode_param_t   channel_mode_param;
 } __packed;
 
 struct afe_audioif_config_command_no_payload {

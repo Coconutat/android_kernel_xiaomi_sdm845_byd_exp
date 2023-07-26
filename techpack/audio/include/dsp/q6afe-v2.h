@@ -1,4 +1,5 @@
-/* Copyright (c) 2012-2018, 2021, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -225,9 +226,6 @@ enum {
 	IDX_AFE_PORT_ID_QUINARY_TDM_RX_7,
 	IDX_AFE_PORT_ID_QUINARY_TDM_TX_7,
 	IDX_AFE_PORT_ID_PSEUDOPORT_01,
-	/* IDX 161 -> 162 */
-	IDX_RT_PROXY_PORT_002_RX,
-	IDX_RT_PROXY_PORT_002_TX,
 	AFE_MAX_PORTS
 };
 
@@ -321,7 +319,6 @@ int afe_rt_proxy_port_read(phys_addr_t buf_addr_p,
 void afe_set_cal_mode(u16 port_id, enum afe_cal_mode afe_cal_mode);
 int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	u32 rate);
-int afe_set_tws_channel_mode(u16 port_id, u32 channel_mode);
 int afe_port_start_v2(u16 port_id, union afe_port_config *afe_config,
 		      u32 rate, u16 afe_in_channels, u16 afe_in_bit_width,
 		      struct afe_enc_config *enc_config,
