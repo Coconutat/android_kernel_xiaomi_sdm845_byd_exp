@@ -125,6 +125,11 @@ kernel/configs/android-*.cfg
 #
 Android.bp
 
+#
+#techpack
+#
+!techapck/
+
 # KernelSU
 drivers/kernelsu
 kernel_log-*.txt
