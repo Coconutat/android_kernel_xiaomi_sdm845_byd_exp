@@ -70,6 +70,7 @@ out/
 !.gitignore
 !.mailmap
 !.cocciconfig
+!.gitmodules
 
 #
 # Generated include files
