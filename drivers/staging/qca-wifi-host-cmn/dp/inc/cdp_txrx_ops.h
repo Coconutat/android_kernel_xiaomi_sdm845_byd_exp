@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2018, 2021 The Linux Foundation. All rights reserved.
  *
  *
  * Permission to use, copy, modify, and/or distribute this software for
@@ -595,6 +595,15 @@ struct cdp_mon_ops {
 		(struct cdp_pdev *pdev, struct cdp_monitor_filter *filter_val);
 };
 
+#ifdef WLAN_FEATURE_PKT_CAPTURE
+struct cdp_pktcapture_ops {
+	void (*txrx_pktcapture_record_channel)
+		(struct cdp_soc_t *soc,
+		uint8_t pdev_id,
+		int chan_no);
+};
+#endif /* #ifdef WLAN_FEATURE_PKT_CAPTURE */
+
 struct cdp_host_stats_ops {
 	int (*txrx_host_stats_get)(struct cdp_vdev *vdev,
 			struct ol_txrx_stats_req *req);
@@ -1090,6 +1099,8 @@ struct cdp_peer_ops {
 	void (*update_last_real_peer)(struct cdp_pdev *pdev, void *peer,
 			uint8_t *peer_id, bool restore_last_peer);
 	void (*peer_detach_force_delete)(void *peer);
+	void (*peer_flush_frags)(struct cdp_pdev *pdev,
+				 uint8_t vdev_id, uint8_t *peer_mac);
 };
 
 /**
@@ -1154,5 +1165,9 @@ struct cdp_ops {
 	struct cdp_tx_delay_ops     *delay_ops;
 	struct cdp_pmf_ops          *pmf_ops;
 #endif /* CONFIG_WIN */
+#ifdef WLAN_FEATURE_PKT_CAPTURE
+	struct cdp_pktcapture_ops   *pktcapture_ops;
+#endif
+
 };
 #endif

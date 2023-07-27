@@ -1311,7 +1311,7 @@ cmd_traffic_agent_receive_start(struct sigma_dut *dut, struct sigma_conn *conn,
 		 */
 		s->dut = dut;
 		val = get_param(cmd, "Interface");
-		strlcpy(s->ifname, (val ? val : get_station_ifname()),
+		strlcpy(s->ifname, (val ? val : get_station_ifname(dut)),
 			sizeof(s->ifname));
 
 		sigma_dut_print(dut, DUT_MSG_DEBUG, "Traffic agent: start "
@@ -1336,8 +1336,8 @@ static void write_frame_stats(struct sigma_dut *dut, struct sigma_stream *s,
 	FILE *f;
 	unsigned int i;
 
-	snprintf(fname, sizeof(fname), SIGMA_TMPDIR "/e2e%u-%d.txt",
-		 (unsigned int) time(NULL), id);
+	snprintf(fname, sizeof(fname), "%s/e2e%u-%d.txt",
+		 dut->sigma_tmpdir, (unsigned int) time(NULL), id);
 	f = fopen(fname, "w");
 	if (f == NULL) {
 		sigma_dut_print(dut, DUT_MSG_INFO, "Could not write %s",
