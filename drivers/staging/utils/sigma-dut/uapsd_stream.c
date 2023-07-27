@@ -1465,6 +1465,7 @@ static void * send_uapsd(void *data)
 	}
 
 	sigma_dut_print(dut, DUT_MSG_INFO, "send_uapsd: Uapsd TX End");
+	pthread_join(s->uapsd_send_thr, NULL);
 
 	return NULL;
 }
@@ -1573,7 +1574,7 @@ void receive_uapsd(struct sigma_stream *s)
 		free(rxpkt);
 	sigma_dut_print(dut, DUT_MSG_INFO, "receive_uapsd: Uapsd RX End");
 	if (s->sock >= 0) {
-		pthread_join(s->uapsd_send_thr, NULL);
+		pthread_join(s->thr, NULL);
 		close(s->sock);
 		s->sock = -1;
 	}

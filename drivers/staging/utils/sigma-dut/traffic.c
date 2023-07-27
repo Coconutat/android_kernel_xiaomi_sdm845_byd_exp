@@ -37,7 +37,7 @@ static enum sigma_cmd_result cmd_traffic_send_ping(struct sigma_dut *dut,
 	char buf[100];
 	int type = 1;
 	int dscp = 0, use_dscp = 0;
-	char extra[100], int_arg[100], intf_arg[100], ip_dst[100], ping[100];
+	char extra[100], int_arg[100], intf_arg[100], ip_dst[100];
 
 	val = get_param(cmd, "Type");
 	if (!val)
@@ -95,19 +95,16 @@ static enum sigma_cmd_result cmd_traffic_send_ping(struct sigma_dut *dut,
 	}
 
 	id = dut->next_streamid++;
-	snprintf(buf, sizeof(buf), "%s/sigma_dut-ping.%d",
-		 dut->sigma_tmpdir, id);
+	snprintf(buf, sizeof(buf), SIGMA_TMPDIR "/sigma_dut-ping.%d", id);
 	unlink(buf);
-	snprintf(buf, sizeof(buf), "%s/sigma_dut-ping-pid.%d",
-		 dut->sigma_tmpdir, id);
+	snprintf(buf, sizeof(buf), SIGMA_TMPDIR "/sigma_dut-ping-pid.%d", id);
 	unlink(buf);
 
 	sigma_dut_print(dut, DUT_MSG_DEBUG, "Send ping: pkts=%d interval=%f "
 			"streamid=%d",
 			pkts, interval, id);
 
-	f = fopen(concat_sigma_tmpdir(dut, "/sigma_dut-ping.sh", ping,
-				      sizeof(ping)), "w");
+	f = fopen(SIGMA_TMPDIR "/sigma_dut-ping.sh", "w");
 	if (f == NULL)
 		return ERROR_SEND_STATUS;
 
@@ -122,30 +119,27 @@ static enum sigma_cmd_result cmd_traffic_send_ping(struct sigma_dut *dut,
 		snprintf(int_arg, sizeof(int_arg), " -i %f", interval);
 	if (!dut->ndp_enable && type == 2)
 		snprintf(intf_arg, sizeof(intf_arg), " -I %s",
-			 get_station_ifname(dut));
+			 get_station_ifname());
 	else
 		intf_arg[0] = '\0';
 	fprintf(f, "#!" SHELL "\n"
-		"ping%s -c %d%s -s %d%s -q%s %s > %s"
+		"ping%s -c %d%s -s %d%s -q%s %s > " SIGMA_TMPDIR
 		"/sigma_dut-ping.%d &\n"
-		"echo $! > %s/sigma_dut-ping-pid.%d\n",
+		"echo $! > " SIGMA_TMPDIR "/sigma_dut-ping-pid.%d\n",
 		type == 2 ? "6" : "", pkts, int_arg, size, extra,
-		intf_arg, dst, dut->sigma_tmpdir, id, dut->sigma_tmpdir, id);
+		intf_arg, dst, id, id);
 
 	fclose(f);
-	if (chmod(concat_sigma_tmpdir(dut, "/sigma_dut-ping.sh", ping,
-				      sizeof(ping)),
+	if (chmod(SIGMA_TMPDIR "/sigma_dut-ping.sh",
 		  S_IRUSR | S_IWUSR | S_IXUSR) < 0)
 		return ERROR_SEND_STATUS;
 
-	if (system(concat_sigma_tmpdir(dut, "/sigma_dut-ping.sh", ping,
-				       sizeof(ping))) != 0) {
+	if (system(SIGMA_TMPDIR "/sigma_dut-ping.sh") != 0) {
 		sigma_dut_print(dut, DUT_MSG_ERROR, "Failed to start ping");
 		return ERROR_SEND_STATUS;
 	}
 
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-ping.sh", ping,
-				   sizeof(ping)));
+	unlink(SIGMA_TMPDIR "/sigma_dut-ping.sh");
 
 	snprintf(resp, sizeof(resp), "streamID,%d", id);
 	send_resp(dut, conn, SIGMA_COMPLETE, resp);
@@ -168,8 +162,7 @@ static enum sigma_cmd_result cmd_traffic_stop_ping(struct sigma_dut *dut,
 		return INVALID_SEND_STATUS;
 	id = atoi(val);
 
-	snprintf(buf, sizeof(buf), "%s/sigma_dut-ping-pid.%d",
-		 dut->sigma_tmpdir, id);
+	snprintf(buf, sizeof(buf), SIGMA_TMPDIR "/sigma_dut-ping-pid.%d", id);
 	f = fopen(buf, "r");
 	if (f == NULL) {
 		send_resp(dut, conn, SIGMA_ERROR,
@@ -193,8 +186,7 @@ static enum sigma_cmd_result cmd_traffic_stop_ping(struct sigma_dut *dut,
 	}
 	usleep(250000);
 
-	snprintf(buf, sizeof(buf), "%s/sigma_dut-ping.%d",
-		 dut->sigma_tmpdir, id);
+	snprintf(buf, sizeof(buf), SIGMA_TMPDIR "/sigma_dut-ping.%d", id);
 	f = fopen(buf, "r");
 	if (f == NULL) {
 		sigma_dut_print(dut, DUT_MSG_DEBUG,
@@ -227,8 +219,7 @@ static enum sigma_cmd_result cmd_traffic_stop_ping(struct sigma_dut *dut,
 		}
 	}
 	fclose(f);
-	snprintf(buf, sizeof(buf), "%s/sigma_dut-ping.%d",
-		 dut->sigma_tmpdir, id);
+	snprintf(buf, sizeof(buf), SIGMA_TMPDIR "/sigma_dut-ping.%d", id);
 	unlink(buf);
 
 	if (!res_found) {
@@ -254,7 +245,7 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 	const char *proto;
 	char buf[256];
 	const char *ifname;
-	char port_str[20], iperf[100];
+	char port_str[20];
 	FILE *f;
 	int server, ipv6 = 0;
 
@@ -300,7 +291,7 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 	if (dut->ndpe)
 		ifname = "nan0";
 	else
-		ifname = get_station_ifname(dut);
+		ifname = get_station_ifname();
 
 	val = get_param(cmd, "duration");
 	if (val)
@@ -308,13 +299,10 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 	else
 		duration = 0;
 
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf", iperf,
-				   sizeof(iperf)));
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf-pid", iperf,
-				   sizeof(iperf)));
+	unlink(SIGMA_TMPDIR "/sigma_dut-iperf");
+	unlink(SIGMA_TMPDIR "/sigma_dut-iperf-pid");
 
-	f = fopen(concat_sigma_tmpdir(dut, "/sigma_dut-iperf.sh", iperf,
-				      sizeof(iperf)), "w");
+	f = fopen(SIGMA_TMPDIR "/sigma_dut-iperf.sh", "w");
 	if (!f) {
 		send_resp(dut, conn, SIGMA_ERROR,
 			  "errorCode,Can not write sigma_dut-iperf.sh");
@@ -324,10 +312,10 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 	if (server) {
 		/* write server side command to shell file */
 		fprintf(f, "#!" SHELL "\n"
-			"iperf3 -s %s %s > %s"
+			"iperf3 -s %s %s > " SIGMA_TMPDIR
 			"/sigma_dut-iperf &\n"
-			"echo $! > %s/sigma_dut-iperf-pid\n",
-			port_str, iptype, dut->sigma_tmpdir, dut->sigma_tmpdir);
+			"echo $! > " SIGMA_TMPDIR "/sigma_dut-iperf-pid\n",
+			port_str, iptype);
 	} else {
 		/* write client side command to shell file */
 		if (!dst)
@@ -337,17 +325,15 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 		else
 			snprintf(buf, sizeof(buf), "%s", dst);
 		fprintf(f, "#!" SHELL "\n"
-			"iperf3 -c %s -t %d %s %s %s > %s"
+			"iperf3 -c %s -t %d %s %s %s > " SIGMA_TMPDIR
 			"/sigma_dut-iperf &\n"
-			"echo $! > %s/sigma_dut-iperf-pid\n",
-			buf, duration, iptype, proto, port_str,
-			dut->sigma_tmpdir, dut->sigma_tmpdir);
+			"echo $! > " SIGMA_TMPDIR "/sigma_dut-iperf-pid\n",
+			buf, duration, iptype, proto, port_str);
 	}
 
 	fclose(f);
 
-	if (chmod(concat_sigma_tmpdir(dut, "/sigma_dut-iperf.sh", iperf,
-				      sizeof(iperf)),
+	if (chmod(SIGMA_TMPDIR "/sigma_dut-iperf.sh",
 		  S_IRUSR | S_IWUSR | S_IXUSR) < 0) {
 		send_resp(dut, conn, SIGMA_ERROR,
 			  "errorCode,Can not chmod sigma_dut-iperf.sh");
@@ -355,16 +341,14 @@ static enum sigma_cmd_result cmd_traffic_start_iperf(struct sigma_dut *dut,
 	}
 
 	sigma_dut_print(dut, DUT_MSG_DEBUG, "Starting iperf");
-	if (system(concat_sigma_tmpdir(dut, "/sigma_dut-iperf.sh", iperf,
-				       sizeof(iperf))) != 0) {
+	if (system(SIGMA_TMPDIR "/sigma_dut-iperf.sh") != 0) {
 		sigma_dut_print(dut, DUT_MSG_ERROR, "Failed to start iperf");
 		send_resp(dut, conn, SIGMA_ERROR,
 			  "errorCode,Failed to run sigma_dut-iperf.sh");
 		return STATUS_SENT;
 	}
 
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf.sh", iperf,
-				   sizeof(iperf)));
+	unlink(SIGMA_TMPDIR "/sigma_dut-iperf.sh");
 	return SUCCESS_SEND_STATUS;
 }
 
@@ -375,13 +359,12 @@ static enum sigma_cmd_result cmd_traffic_stop_iperf(struct sigma_dut *dut,
 {
 	int pid;
 	FILE *f;
-	char buf[100], summary_buf[100], iperf[100];
+	char buf[100], summary_buf[100];
 	float bandwidth, totalbytes, factor;
 	char *pos;
 	long l_bandwidth, l_totalbytes;
 
-	f = fopen(concat_sigma_tmpdir(dut, "/sigma_dut-iperf-pid", iperf,
-				      sizeof(iperf)), "r");
+	f = fopen(SIGMA_TMPDIR "/sigma_dut-iperf-pid", "r");
 	if (!f) {
 		send_resp(dut, conn, SIGMA_ERROR,
 			  "errorCode,PID file does not exist");
@@ -390,14 +373,12 @@ static enum sigma_cmd_result cmd_traffic_stop_iperf(struct sigma_dut *dut,
 	if (fscanf(f, "%d", &pid) != 1 || pid <= 0) {
 		sigma_dut_print(dut, DUT_MSG_ERROR, "No PID for iperf process");
 		fclose(f);
-		unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf-pid", iperf,
-					   sizeof(iperf)));
+		unlink(SIGMA_TMPDIR "/sigma_dut-iperf-pid");
 		return ERROR_SEND_STATUS;
 	}
 
 	fclose(f);
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf-pid", iperf,
-				   sizeof(iperf)));
+	unlink(SIGMA_TMPDIR "/sigma_dut-iperf-pid");
 
 	if (kill(pid, SIGINT) < 0 && errno != ESRCH) {
 		sigma_dut_print(dut, DUT_MSG_DEBUG, "kill failed: %s",
@@ -407,8 +388,7 @@ static enum sigma_cmd_result cmd_traffic_stop_iperf(struct sigma_dut *dut,
 
 	/* parse iperf output which is stored in sigma_dut-iperf */
 	summary_buf[0] = '\0';
-	f = fopen(concat_sigma_tmpdir(dut, "/sigma_dut-iperf", iperf,
-				      sizeof(iperf)), "r");
+	f = fopen(SIGMA_TMPDIR "/sigma_dut-iperf", "r");
 	if (!f) {
 		sigma_dut_print(dut, DUT_MSG_DEBUG,
 				"No iperf result file found");
@@ -431,8 +411,7 @@ static enum sigma_cmd_result cmd_traffic_stop_iperf(struct sigma_dut *dut,
 	}
 
 	fclose(f);
-	unlink(concat_sigma_tmpdir(dut, "/sigma_dut-iperf", iperf,
-				   sizeof(iperf)));
+	unlink(SIGMA_TMPDIR "/sigma_dut-iperf");
 
 	pos = strstr(summary_buf, "Bytes");
 	if (!pos || pos == summary_buf) {

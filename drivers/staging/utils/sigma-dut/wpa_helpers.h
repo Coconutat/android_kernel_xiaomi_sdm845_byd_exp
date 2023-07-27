@@ -10,9 +10,9 @@
 #ifndef WPA_HELPERS_H
 #define WPA_HELPERS_H
 
-const char * get_main_ifname(struct sigma_dut *dut);
-const char * get_station_ifname(struct sigma_dut *dut);
-const char * get_p2p_ifname(struct sigma_dut *dut, const char *primary_ifname);
+char * get_main_ifname(void);
+char * get_station_ifname(void);
+const char * get_p2p_ifname(const char *primary_ifname);
 void dut_ifc_reset(struct sigma_dut *dut);
 
 int wpa_command(const char *ifname, const char *cmd);
@@ -51,9 +51,6 @@ int add_cred(const char *ifname);
 int set_cred(const char *ifname, int id, const char *field, const char *value);
 int set_cred_quoted(const char *ifname, int id, const char *field,
 		    const char *value);
-
-const char * concat_sigma_tmpdir(struct sigma_dut *dut, const char *src,
-				 char *dst, size_t len);
 
 int start_sta_mode(struct sigma_dut *dut);
 void stop_sta_mode(struct sigma_dut *dut);

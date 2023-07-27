@@ -81,8 +81,6 @@ struct sigma_dut;
 #define MAX_PARAMS 100
 #define MAX_RADIO 3
 
-#define NAN_AWARE_IFACE "wifi-aware0"
-
 /* Set default operating channel width 80 MHz */
 #define VHT_DEFAULT_OPER_CHWIDTH AP_80_VHT_OPER_CHWIDTH
 
@@ -338,24 +336,11 @@ enum akm_suite_values {
 };
 
 struct sigma_dut {
-	const char *main_ifname;
-	char *main_ifname_2g;
-	char *main_ifname_5g;
-	const char *station_ifname;
-	char *station_ifname_2g;
-	char *station_ifname_5g;
-	char *p2p_ifname_buf;
-	int use_5g;
-	int sta_2g_started;
-	int sta_5g_started;
-
 	int s; /* server TCP socket */
 	int debug_level;
 	int stdout_debug;
 	struct sigma_cmd_handler *cmds;
 	int response_sent;
-
-	const char *sigma_tmpdir;
 
 	/* Default timeout value (seconds) for commands */
 	unsigned int default_timeout;
@@ -402,7 +387,7 @@ struct sigma_dut {
 
 	int go;
 	int p2p_client;
-	const char *p2p_ifname;
+	char *p2p_ifname;
 
 	int client_uapsd;
 
@@ -414,8 +399,6 @@ struct sigma_dut {
 		STA_PMF_OPTIONAL,
 		STA_PMF_REQUIRED
 	} sta_pmf;
-
-	int sta_ft_ds;
 
 	int no_tpk_expiration;
 
@@ -445,14 +428,12 @@ struct sigma_dut {
 		AP_11ng,
 		AP_11ac,
 		AP_11ad,
-		AP_11ax,
 		AP_inval
 	} ap_mode;
 	int ap_channel;
 	int ap_rts;
 	int ap_frgmnt;
 	int ap_bcnint;
-	int ap_start_disabled;
 	struct qos_params {
 		int ac;
 		int cwmin;
@@ -544,7 +525,6 @@ struct sigma_dut {
 	char *ap_sae_groups;
 	int sae_anti_clogging_threshold;
 	int sae_reflection;
-	int sae_confirm_immediate;
 	char ap_passphrase[101];
 	char ap_psk[65];
 	char *ap_sae_passwords;
@@ -654,7 +634,6 @@ struct sigma_dut {
 	char ap_mobility_domain[10];
 	unsigned char ap_cell_cap_pref;
 	int ap_ft_oa;
-	enum value_not_set_enabled_disabled ap_ft_ds;
 	int ap_name;
 	int ap_interface_5g;
 	int ap_interface_2g;
@@ -677,8 +656,6 @@ struct sigma_dut {
 	unsigned int ap_akm_values;
 	int ap_pmksa;
 	int ap_pmksa_caching;
-	int ap_beacon_prot;
-	u8 ap_transition_disable;
 	int ap_80plus80;
 	int ap_oper_chn;
 
@@ -690,12 +667,6 @@ struct sigma_dut {
 
 	char *ar_ltf;
 
-	int ap_numsounddim;
-	unsigned int he_mcsnssmap;
-	int he_ul_mcs;
-	int he_mmss;
-	int he_srctrl_allow;
-
 	enum value_not_set_enabled_disabled ap_oce;
 	enum value_not_set_enabled_disabled ap_filsdscv;
 	enum value_not_set_enabled_disabled ap_filshlp;
@@ -704,15 +675,6 @@ struct sigma_dut {
 	enum value_not_set_enabled_disabled ap_esp;
 
 	enum value_not_set_enabled_disabled ap_he_ulofdma;
-	enum value_not_set_enabled_disabled ap_he_dlofdma;
-	enum value_not_set_enabled_disabled ap_bcc;
-	enum value_not_set_enabled_disabled ap_he_frag;
-	enum value_not_set_enabled_disabled ap_mu_edca;
-	enum value_not_set_enabled_disabled ap_he_rtsthrshld;
-	enum value_not_set_enabled_disabled ap_mbssid;
-	enum value_not_set_enabled_disabled ap_twtresp;
-	enum value_not_set_enabled_disabled he_sounding;
-	enum value_not_set_enabled_disabled he_set_sta_1x1;
 
 	enum ppdu {
 		PPDU_NOT_SET,
@@ -720,20 +682,7 @@ struct sigma_dut {
 		PPDU_SU,
 		PPDU_ER,
 		PPDU_TB,
-		PPDU_HESU,
 	} ap_he_ppdu;
-
-	enum bufsize {
-		BA_BUFSIZE_NOT_SET,
-		BA_BUFSIZE_64,
-		BA_BUFSIZE_256,
-	} ap_ba_bufsize;
-
-	enum mimo {
-		MIMO_NOT_SET,
-		MIMO_DL,
-		MIMO_UL,
-	} ap_he_mimo;
 
 	struct sigma_ese_alloc ap_ese_allocs[MAX_ESE_ALLOCS];
 	int ap_num_ese_allocs;
@@ -776,9 +725,6 @@ struct sigma_dut {
 
 	enum sec_ch_offset ap_chwidth_offset;
 
-	char *ap_dpp_conf_addr;
-	char *ap_dpp_conf_pkhash;
-
 #ifdef CONFIG_SNIFFER
 	pid_t sniffer_pid;
 	char sniffer_filename[200];
@@ -789,7 +735,6 @@ struct sigma_dut {
 	pthread_t rtsp_thread_handle;
 	int wfd_device_type; /* 0 for source, 1 for sink */
 	char peer_mac_address[32];
-	char modified_peer_mac_address[32];
 	void *miracast_lib;
 	const char *miracast_lib_path;
 	char mdns_instance_name[64];
@@ -819,7 +764,6 @@ struct sigma_dut {
 		PROGRAM_WPA3,
 		PROGRAM_HE,
 		PROGRAM_HS2_R3,
-		PROGRAM_QM,
 	} program;
 
 	enum device_type {
@@ -901,10 +845,8 @@ struct sigma_dut {
 
 	char *sae_commit_override;
 	char *rsne_override;
-	char *rsnxe_override_eapol;
 	int sta_associate_wait_connect;
 	char server_cert_hash[65];
-	int server_cert_tod;
 	int sta_tod_policy;
 	const char *hostapd_bin;
 	int use_hostapd_pid_file;
@@ -938,15 +880,6 @@ struct sigma_dut {
 	wifi_handle wifi_hal_handle;
 	bool wifi_hal_initialized;
 #endif /*ANDROID_WIFI_HAL*/
-
-	int sae_h2e_default;
-	enum {
-		SAE_PWE_DEFAULT,
-		SAE_PWE_LOOP,
-		SAE_PWE_H2E
-	} sae_pwe;
-	int owe_ptk_workaround;
-	int ocvc;
 };
 
 
@@ -1018,7 +951,7 @@ enum openwrt_driver_type {
 #define DRIVER_NAME_60G "wil6210"
 
 int set_wifi_chip(const char *chip_type);
-enum driver_type get_driver_type(struct sigma_dut *dut);
+enum driver_type get_driver_type(void);
 enum openwrt_driver_type get_openwrt_driver_type(void);
 int file_exists(const char *fname);
 
@@ -1050,7 +983,7 @@ void ap_register_cmds(void);
 void ath_disable_txbf(struct sigma_dut *dut, const char *intf);
 void ath_config_dyn_bw_sig(struct sigma_dut *dut, const char *ifname,
 			   const char *val);
-void novap_reset(struct sigma_dut *dut, const char *ifname, int reset);
+void novap_reset(struct sigma_dut *dut, const char *ifname);
 int get_hwaddr(const char *ifname, unsigned char *hwaddr);
 enum sigma_cmd_result cmd_ap_config_commit(struct sigma_dut *dut,
 					   struct sigma_conn *conn,
@@ -1081,12 +1014,6 @@ int wil6210_set_ese(struct sigma_dut *dut, int count,
 int sta_extract_60g_ese(struct sigma_dut *dut, struct sigma_cmd *cmd,
 			struct sigma_ese_alloc *allocs, int *allocs_size);
 int wil6210_set_force_mcs(struct sigma_dut *dut, int force, int mcs);
-int sta_set_addba_buf_size(struct sigma_dut *dut,
-			   const char *intf, int bufsize);
-#ifdef NL80211_SUPPORT
-int wcn_set_he_ltf(struct sigma_dut *dut, const char *intf,
-		   enum qca_wlan_he_ltf_cfg ltf);
-#endif /* NL80211_SUPPORT */
 
 /* p2p.c */
 void p2p_register_cmds(void);
@@ -1132,8 +1059,6 @@ void str_remove_chars(char *str, char ch);
 int get_wps_forced_version(struct sigma_dut *dut, const char *str);
 int base64_encode(const char *src, size_t len, char *out, size_t out_len);
 int random_get_bytes(char *buf, size_t len);
-int get_enable_disable(const char *val);
-int wcn_driver_cmd(const char *ifname, char *buf);
 
 /* uapsd_stream.c */
 void receive_uapsd(struct sigma_stream *s);
@@ -1169,9 +1094,8 @@ int lowi_cmd_sta_reset_default(struct sigma_dut *dut, struct sigma_conn *conn,
 			       struct sigma_cmd *cmd);
 
 /* dpp.c */
-enum sigma_cmd_result dpp_dev_exec_action(struct sigma_dut *dut,
-					  struct sigma_conn *conn,
-					  struct sigma_cmd *cmd);
+int dpp_dev_exec_action(struct sigma_dut *dut, struct sigma_conn *conn,
+			struct sigma_cmd *cmd);
 
 /* dhcp.c */
 void process_fils_hlp(struct sigma_dut *dut);

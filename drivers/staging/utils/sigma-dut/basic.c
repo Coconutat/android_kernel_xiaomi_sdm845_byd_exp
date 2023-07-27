@@ -27,7 +27,7 @@ static enum sigma_cmd_result cmd_ca_get_version(struct sigma_dut *dut,
 	if (info) {
 		char buf[200];
 		snprintf(buf, sizeof(buf), "NOTE CAPI:TestInfo:%s", info);
-		wpa_command(get_main_ifname(dut), buf);
+		wpa_command(get_main_ifname(), buf);
 	}
 
 	send_resp(dut, conn, SIGMA_COMPLETE, "version,1.0");
@@ -81,9 +81,9 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 	const char *version = "N/A";
 #ifdef __linux__
 	char model_buf[128];
-	char ver_buf[512];
-#endif /* __linux__ */
+	char ver_buf[256];
 	int res;
+#endif /* __linux__ */
 	char resp[512];
 
 #ifdef __linux__
@@ -97,14 +97,14 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 		char host_fw_ver[128];
 
 		snprintf(path, sizeof(path), "/sys/class/net/%s/phy80211",
-			 get_main_ifname(dut));
+			 get_main_ifname());
 		if (stat(path, &s) == 0) {
 			ssize_t res;
 			char *pos;
 
 			res = snprintf(fname, sizeof(fname),
 				       "/sys/class/net/%s/device/driver",
-				       get_main_ifname(dut));
+				       get_main_ifname());
 			if (res < 0 || res >= sizeof(fname)) {
 				model = "Linux/";
 			} else if ((res = readlink(fname, path,
@@ -119,10 +119,9 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 					pos = path;
 				else
 					pos++;
-				res = snprintf(model_buf, sizeof(model_buf),
-					       "Linux/%s", pos);
-				if (res >= 0 && res < sizeof(model_buf))
-					model = model_buf;
+				snprintf(model_buf, sizeof(model_buf),
+					 "Linux/%s", pos);
+				model = model_buf;
 			}
 		} else
 			model = "Linux";
@@ -155,11 +154,11 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 				sizeof(wpa_supplicant_ver));
 
 		host_fw_ver[0] = '\0';
-		if (get_driver_type(dut) == DRIVER_WCN ||
-		    get_driver_type(dut) == DRIVER_LINUX_WCN) {
+		if (get_driver_type() == DRIVER_WCN ||
+		    get_driver_type() == DRIVER_LINUX_WCN) {
 			get_ver("iwpriv wlan0 version", host_fw_ver,
 				sizeof(host_fw_ver));
-		} else if (get_driver_type(dut) == DRIVER_WIL6210) {
+		} else if (get_driver_type() == DRIVER_WIL6210) {
 			struct ethtool_drvinfo drvinfo;
 			struct ifreq ifr; /* ifreq suitable for ethtool ioctl */
 			int fd; /* socket suitable for ethtool ioctl */
@@ -168,7 +167,7 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 			drvinfo.cmd = ETHTOOL_GDRVINFO;
 
 			memset(&ifr, 0, sizeof(ifr));
-			strlcpy(ifr.ifr_name, get_main_ifname(dut),
+			strlcpy(ifr.ifr_name, get_main_ifname(),
 				sizeof(ifr.ifr_name));
 
 			fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -206,10 +205,8 @@ static enum sigma_cmd_result cmd_device_get_info(struct sigma_dut *dut,
 		model = dut->model_name;
 	if (dut->version_name)
 		version = dut->version_name;
-	res = snprintf(resp, sizeof(resp), "vendor,%s,model,%s,version,%s",
-		       vendor, model, version);
-	if (res < 0 || res >= sizeof(resp))
-		return ERROR_SEND_STATUS;
+	snprintf(resp, sizeof(resp), "vendor,%s,model,%s,version,%s",
+		 vendor, model, version);
 
 	send_resp(dut, conn, SIGMA_COMPLETE, resp);
 	return STATUS_SENT;
@@ -228,7 +225,7 @@ static enum sigma_cmd_result cmd_device_list_interfaces(struct sigma_dut *dut,
 							struct sigma_conn *conn,
 							struct sigma_cmd *cmd)
 {
-	const char *type, *band;
+	const char *type;
 	char resp[200];
 
 	type = get_param(cmd, "interfaceType");
@@ -239,19 +236,8 @@ static enum sigma_cmd_result cmd_device_list_interfaces(struct sigma_dut *dut,
 	if (strcmp(type, "802.11") != 0)
 		return ERROR_SEND_STATUS;
 
-	band = get_param(cmd, "band");
-	if (!band) {
-	} else if (strcasecmp(band, "24g") == 0) {
-		dut->use_5g = 0;
-	} else if (strcasecmp(band, "5g") == 0) {
-		dut->use_5g = 1;
-	} else {
-		send_resp(dut, conn, SIGMA_COMPLETE,
-			  "errorCode,Unsupported band value");
-		return STATUS_SENT_ERROR;
-	}
-	snprintf(resp, sizeof(resp), "interfaceType,802.11,interfaceID,%s",
-		 get_main_ifname(dut));
+	snprintf(resp, sizeof(resp), "interfaceType,802.11,"
+		 "interfaceID,%s", get_main_ifname());
 	send_resp(dut, conn, SIGMA_COMPLETE, resp);
 	return STATUS_SENT;
 }

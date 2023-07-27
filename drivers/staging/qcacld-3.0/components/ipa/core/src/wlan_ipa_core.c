@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -243,10 +243,9 @@ static void wlan_ipa_send_pkt_to_tl(
 
 	qdf_spin_lock_bh(&ipa_ctx->q_lock);
 	/* get free Tx desc and assign ipa_tx_desc pointer */
-	if (ipa_ctx->tx_desc_list.count &&
-	    qdf_list_remove_front(&ipa_ctx->tx_desc_list,
-				  (qdf_list_node_t **)&tx_desc) ==
-							QDF_STATUS_SUCCESS) {
+	if (qdf_list_remove_front(&ipa_ctx->tx_desc_list,
+				 (qdf_list_node_t **)&tx_desc) ==
+	    QDF_STATUS_SUCCESS) {
 		tx_desc->ipa_tx_desc_ptr = ipa_tx_desc;
 		ipa_ctx->stats.num_tx_desc_q_cnt++;
 		qdf_spin_unlock_bh(&ipa_ctx->q_lock);
@@ -302,39 +301,26 @@ static inline bool wlan_ipa_wdi_is_smmu_enabled(struct wlan_ipa_priv *ipa_ctx,
 	return ipa_ctx->is_smmu_enabled && qdf_mem_smmu_s1_enabled(osdev);
 }
 
-static inline QDF_STATUS
-wlan_ipa_wdi_setup(struct wlan_ipa_priv *ipa_ctx,
-		   qdf_device_t osdev)
+static inline QDF_STATUS wlan_ipa_wdi_setup(struct wlan_ipa_priv *ipa_ctx,
+					    qdf_device_t osdev)
 {
-	qdf_ipa_sys_connect_params_t *sys_in = NULL;
+	qdf_ipa_sys_connect_params_t sys_in[WLAN_IPA_MAX_IFACE];
 	int i;
-	QDF_STATUS qdf_status = QDF_STATUS_SUCCESS;
-
-	sys_in = qdf_mem_malloc(sizeof(*sys_in) * WLAN_IPA_MAX_IFACE);
-	if (!sys_in) {
-		ipa_err("sys_in allocation failed");
-		return QDF_STATUS_E_NOMEM;
-	}
 
 	for (i = 0; i < WLAN_IPA_MAX_IFACE; i++)
-		qdf_mem_copy(sys_in + i,
+		qdf_mem_copy(&sys_in[i],
 			     &ipa_ctx->sys_pipe[i].ipa_sys_params,
 			     sizeof(qdf_ipa_sys_connect_params_t));
 
-	qdf_status = cdp_ipa_setup(ipa_ctx->dp_soc, ipa_ctx->dp_pdev,
-				   wlan_ipa_i2w_cb, wlan_ipa_w2i_cb,
-				   wlan_ipa_wdi_meter_notifier_cb,
-				   ipa_ctx->config->desc_size,
-				   ipa_ctx,
-				   wlan_ipa_is_rm_enabled(ipa_ctx->config),
-				   &ipa_ctx->tx_pipe_handle,
-				   &ipa_ctx->rx_pipe_handle,
-				   wlan_ipa_wdi_is_smmu_enabled(ipa_ctx, osdev),
-				   sys_in);
-
-	qdf_mem_free(sys_in);
-
-	return qdf_status;
+	return cdp_ipa_setup(ipa_ctx->dp_soc, ipa_ctx->dp_pdev,
+			     wlan_ipa_i2w_cb, wlan_ipa_w2i_cb,
+			     wlan_ipa_wdi_meter_notifier_cb,
+			     ipa_ctx->config->desc_size,
+			     ipa_ctx, wlan_ipa_is_rm_enabled(ipa_ctx->config),
+			     &ipa_ctx->tx_pipe_handle,
+			     &ipa_ctx->rx_pipe_handle,
+			     wlan_ipa_wdi_is_smmu_enabled(ipa_ctx, osdev),
+			     sys_in);
 }
 
 #ifdef FEATURE_METERING
@@ -760,41 +746,6 @@ static enum wlan_ipa_forward_type wlan_ipa_intrabss_forward(
 }
 
 /**
- * wlan_ipa_eapol_intrabss_fwd_check() - Check if eapol pkt intrabss fwd is
- *  allowed or not
- * @ipa_ctx: IPA global context
- * @vdev_id: vdev id
- * @nbuf: network buffer
- *
- * Return: true if intrabss fwd is allowed for eapol else false
- */
-static bool
-wlan_ipa_eapol_intrabss_fwd_check(struct wlan_ipa_priv *ipa_ctx,
-				  uint8_t vdev_id, qdf_nbuf_t nbuf)
-{
-	struct cdp_vdev *vdev;
-	uint8_t *vdev_mac_addr;
-
-	vdev = cdp_get_vdev_from_vdev_id(ipa_ctx->dp_soc, ipa_ctx->dp_pdev,
-					 vdev_id);
-	if (!vdev) {
-		ipa_err_rl("txrx vdev is NULL for vdev_id = %d", vdev_id);
-		return false;
-	}
-
-	vdev_mac_addr = cdp_get_vdev_mac_addr(ipa_ctx->dp_soc, vdev);
-
-	if (!vdev_mac_addr)
-		return false;
-
-	if (qdf_mem_cmp(qdf_nbuf_data(nbuf) + QDF_NBUF_DEST_MAC_OFFSET,
-			vdev_mac_addr, QDF_MAC_ADDR_SIZE))
-		return false;
-
-	return true;
-}
-
-/**
  * __wlan_ipa_w2i_cb() - WLAN to IPA callback handler
  * @priv: pointer to private data registered with IPA (we register a
  *	pointer to the global IPA context)
@@ -812,10 +763,6 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 	uint8_t session_id;
 	struct wlan_ipa_iface_context *iface_context;
 	uint8_t fw_desc;
-	void *peer;
-	bool is_eapol_wapi = false;
-	struct qdf_mac_addr peer_mac_addr = QDF_MAC_ADDR_ZERO_INIT;
-	uint8_t sta_idx;
 
 	ipa_ctx = (struct wlan_ipa_priv *)priv;
 	if (!ipa_ctx) {
@@ -870,48 +817,6 @@ static void __wlan_ipa_w2i_cb(void *priv, qdf_ipa_dp_evt_type_t evt,
 		}
 
 		iface_context->stats.num_rx_ipa_excep++;
-
-		if (iface_context->device_mode == QDF_STA_MODE)
-			qdf_copy_macaddr(&peer_mac_addr, &iface_context->bssid);
-		else if (iface_context->device_mode == QDF_SAP_MODE)
-			qdf_mem_copy(&peer_mac_addr.bytes[0],
-				     qdf_nbuf_data(skb) +
-				     QDF_NBUF_SRC_MAC_OFFSET,
-				     QDF_MAC_ADDR_SIZE);
-
-		if (qdf_nbuf_is_ipv4_eapol_pkt(skb)) {
-			is_eapol_wapi = true;
-			if (iface_context->device_mode == QDF_SAP_MODE &&
-			    !wlan_ipa_eapol_intrabss_fwd_check(ipa_ctx,
-					      iface_context->session_id, skb)) {
-				ipa_err_rl("EAPOL intrabss fwd drop DA: %pM",
-					   qdf_nbuf_data(skb) +
-					   QDF_NBUF_DEST_MAC_OFFSET);
-				ipa_ctx->ipa_rx_internal_drop_count++;
-				dev_kfree_skb_any(skb);
-				return;
-			}
-		} else if (qdf_nbuf_is_ipv4_wapi_pkt(skb)) {
-			is_eapol_wapi = true;
-		}
-
-		peer = cdp_peer_find_by_addr(ipa_ctx->dp_soc, ipa_ctx->dp_pdev,
-					     peer_mac_addr.bytes, &sta_idx);
-
-		/*
-		 * Check for peer authorized state before allowing
-		 * non-EAPOL/WAPI frames to be intrabss forwarded
-		 * or submitted to stack.
-		 */
-
-		if (peer && cdp_peer_state_get(ipa_ctx->dp_soc, peer) !=
-		    OL_TXRX_PEER_STATE_AUTH && !is_eapol_wapi) {
-			ipa_err_rl("Non EAPOL/WAPI packet received when peer %pM is unauthorized",
-				   peer_mac_addr.bytes);
-			ipa_ctx->ipa_rx_internal_drop_count++;
-			dev_kfree_skb_any(skb);
-			return;
-		}
 
 		/* Disable to forward Intra-BSS Rx packets when
 		 * ap_isolate=1 in hostapd.conf
@@ -1074,12 +979,6 @@ QDF_STATUS wlan_ipa_suspend(struct wlan_ipa_priv *ipa_ctx)
 	ipa_ctx->suspended = true;
 	qdf_spin_unlock_bh(&ipa_ctx->pm_lock);
 
-	if (ipa_ctx->config->ipa_force_voting &&
-	    !ipa_ctx->ipa_pipes_down)
-		wlan_ipa_set_perf_level(ipa_ctx,
-					ipa_ctx->config->bus_bw_high,
-					ipa_ctx->config->bus_bw_high);
-
 	return QDF_STATUS_SUCCESS;
 }
 
@@ -1135,14 +1034,14 @@ QDF_STATUS wlan_ipa_uc_disable_pipes(struct wlan_ipa_priv *ipa_ctx)
 	ipa_debug("enter");
 
 	if (ipa_ctx->ipa_pipes_down) {
-		ipa_info("IPA WDI Pipes are already deactivated");
+		ipa_warn("IPA WDI Pipes are already deactivated");
 		goto end;
 	}
 
 	qdf_spin_lock_bh(&ipa_ctx->pipes_down_lock);
 	if (ipa_ctx->pipes_down_in_progress || ipa_ctx->ipa_pipes_down) {
-		qdf_spin_unlock_bh(&ipa_ctx->pipes_down_lock);
 		ipa_warn("IPA WDI Pipes down already in progress");
+		qdf_spin_unlock_bh(&ipa_ctx->pipes_down_lock);
 		return QDF_STATUS_E_ALREADY;
 	}
 	ipa_ctx->pipes_down_in_progress = true;
@@ -1207,7 +1106,7 @@ static bool wlan_ipa_uc_find_add_assoc_sta(struct wlan_ipa_priv *ipa_ctx,
 		}
 	}
 	if (!sta_add && !sta_found) {
-		ipa_info("STA ID %d does not exist, cannot delete", sta_id);
+		ipa_err("STA ID %d does not exist, cannot delete", sta_id);
 		return sta_found;
 	}
 	if (!sta_add) {
@@ -1277,7 +1176,6 @@ static void wlan_ipa_cleanup_iface(struct wlan_ipa_iface_context *iface_context)
 	iface_context->sta_id = WLAN_IPA_MAX_STA_COUNT;
 	qdf_spin_unlock_bh(&iface_context->interface_lock);
 	iface_context->ifa_address = 0;
-	qdf_zero_macaddr(&iface_context->bssid);
 	if (!iface_context->ipa_ctx->num_iface) {
 		ipa_err("NUM INTF 0, Invalid");
 		QDF_ASSERT(0);
@@ -1315,16 +1213,8 @@ static QDF_STATUS wlan_ipa_setup_iface(struct wlan_ipa_priv *ipa_ctx,
 	if (device_mode == QDF_SAP_MODE) {
 		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
 			iface_context = &(ipa_ctx->iface_context[i]);
-			if (iface_context->dev == net_dev) {
-				if (iface_context->device_mode ==
-				    device_mode)
-					return QDF_STATUS_SUCCESS;
-
-				ipa_err("Obsolete iface %u found, device_mode %u, will remove it.",
-					i,
-					iface_context->device_mode);
-				wlan_ipa_cleanup_iface(iface_context);
-			}
+			if (iface_context->dev == net_dev)
+				return QDF_STATUS_SUCCESS;
 		}
 	}
 
@@ -1516,14 +1406,6 @@ static void wlan_ipa_uc_offload_enable_disable(struct wlan_ipa_priv *ipa_ctx,
 	}
 }
 
-static inline void
-wlan_ipa_save_bssid_iface_ctx(struct wlan_ipa_priv *ipa_ctx, uint8_t iface_id,
-			      uint8_t *mac_addr)
-{
-	qdf_mem_copy(ipa_ctx->iface_context[iface_id].bssid.bytes,
-		     mac_addr, QDF_MAC_ADDR_SIZE);
-}
-
 /**
  * __wlan_ipa_wlan_evt() - IPA event handler
  * @net_dev: Interface net device
@@ -1668,12 +1550,12 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			    type == QDF_IPA_AP_DISCONNECT) {
 				for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
 					iface_ctx = &ipa_ctx->iface_context[i];
-					if (iface_ctx->dev == net_dev) {
-						wlan_ipa_cleanup_iface(
-								iface_ctx);
+
+					if (iface_ctx->dev == net_dev)
 						break;
-					}
 				}
+				if (iface_ctx)
+					wlan_ipa_cleanup_iface(iface_ctx);
 			}
 
 			return QDF_STATUS_SUCCESS;
@@ -1718,10 +1600,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 		ipa_ctx->vdev_to_iface[session_id] =
 				wlan_ipa_get_ifaceid(ipa_ctx, session_id);
-
-		wlan_ipa_save_bssid_iface_ctx(ipa_ctx,
-					     ipa_ctx->vdev_to_iface[session_id],
-					     mac_addr);
 
 		ipa_ctx->sta_connected = 1;
 
@@ -1773,9 +1651,8 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			struct wlan_ipa_iface_context *iface;
 
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_info("%s: Evt: %d, STA already disconnected",
-				 msg_ex->name,
-				 QDF_IPA_MSG_META_MSG_TYPE(&meta));
+			ipa_err("%s: Evt: %d, STA already disconnected",
+				msg_ex->name, QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			iface = wlan_ipa_get_iface(ipa_ctx, QDF_STA_MODE);
 			if (iface && (iface->dev == net_dev))
@@ -1815,9 +1692,9 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			wlan_ipa_uc_offload_enable_disable(ipa_ctx,
 				SIR_STA_RX_DATA_OFFLOAD, session_id, false);
 			qdf_mutex_acquire(&ipa_ctx->event_lock);
+			ipa_ctx->vdev_to_iface[session_id] =
+				WLAN_IPA_MAX_SESSION;
 		}
-
-		ipa_ctx->vdev_to_iface[session_id] = WLAN_IPA_MAX_SESSION;
 
 		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
 			iface_ctx = &ipa_ctx->iface_context[i];
@@ -1870,11 +1747,12 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 		for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
 			iface_ctx = &ipa_ctx->iface_context[i];
-			if (iface_ctx->dev == net_dev) {
-				wlan_ipa_cleanup_iface(iface_ctx);
+
+			if (iface_ctx->dev == net_dev)
 				break;
-			}
 		}
+		if (i < WLAN_IPA_MAX_IFACE)
+			wlan_ipa_cleanup_iface(iface_ctx);
 
 		qdf_mutex_release(&ipa_ctx->event_lock);
 		break;
@@ -1926,7 +1804,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 
 				return status;
 			}
-			ipa_info("first sap client connected");
 		}
 
 		ipa_ctx->sap_num_connected_sta++;
@@ -1965,7 +1842,7 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		}
 		ipa_ctx->stats.num_send_msg++;
 
-		ipa_debug("sap_num_connected_sta=%d",
+		ipa_info("sap_num_connected_sta=%d",
 			  ipa_ctx->sap_num_connected_sta);
 
 		return QDF_STATUS_SUCCESS;
@@ -1980,17 +1857,17 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 		qdf_mutex_acquire(&ipa_ctx->event_lock);
 		if (!ipa_ctx->sap_num_connected_sta) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_debug("%s: Evt: %d, Client already disconnected",
-				  msg_ex->name,
-				  QDF_IPA_MSG_META_MSG_TYPE(&meta));
+			ipa_err("%s: Evt: %d, Client already disconnected",
+				 msg_ex->name,
+				 QDF_IPA_MSG_META_MSG_TYPE(&meta));
 
 			return QDF_STATUS_SUCCESS;
 		}
 		if (!wlan_ipa_uc_find_add_assoc_sta(ipa_ctx, false,
 						    sta_id, mac_addr)) {
 			qdf_mutex_release(&ipa_ctx->event_lock);
-			ipa_debug("%s: STA ID %d NOT found, not valid",
-				  msg_ex->name, sta_id);
+			ipa_err("%s: STA ID %d NOT found, not valid",
+				 msg_ex->name, sta_id);
 
 			return QDF_STATUS_SUCCESS;
 		}
@@ -2013,7 +1890,6 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 				} else {
 					wlan_ipa_uc_handle_last_discon(ipa_ctx);
 				}
-				ipa_info("last sap client disconnected");
 			}
 
 			if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config) &&
@@ -2029,8 +1905,8 @@ static QDF_STATUS __wlan_ipa_wlan_evt(qdf_netdev_t net_dev, uint8_t device_mode,
 			qdf_mutex_release(&ipa_ctx->event_lock);
 		}
 
-		ipa_debug("sap_num_connected_sta=%d",
-			  ipa_ctx->sap_num_connected_sta);
+		ipa_info("sap_num_connected_sta=%d",
+			 ipa_ctx->sap_num_connected_sta);
 		break;
 
 	default:
@@ -2197,9 +2073,8 @@ static inline void wlan_ipa_free_tx_desc_list(struct wlan_ipa_priv *ipa_ctx)
 	qdf_ipa_rx_data_t *ipa_tx_desc;
 	qdf_list_node_t *node;
 
-	while (ipa_ctx->tx_desc_list.count &&
-	       qdf_list_remove_front(&ipa_ctx->tx_desc_list, &node) ==
-							QDF_STATUS_SUCCESS) {
+	while (qdf_list_remove_front(&ipa_ctx->tx_desc_list, &node) ==
+	       QDF_STATUS_SUCCESS) {
 		tmp_desc = qdf_container_of(node, struct wlan_ipa_tx_desc,
 					    node);
 
@@ -2564,33 +2439,27 @@ QDF_STATUS wlan_ipa_setup(struct wlan_ipa_priv *ipa_ctx,
 		ipa_ctx->ipa_pipes_down = true;
 		ipa_ctx->pipes_down_in_progress = false;
 		ipa_ctx->wdi_enabled = false;
+		/* Setup IPA system pipes */
+		if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config)) {
+			ret = wlan_ipa_setup_sys_pipe(ipa_ctx);
+			if (ret)
+				goto fail_create_sys_pipe;
+
+			qdf_create_work(0, &ipa_ctx->mcc_work,
+					wlan_ipa_mcc_work_handler, ipa_ctx);
+		}
 
 		status = wlan_ipa_wdi_init(ipa_ctx);
-		if (status == QDF_STATUS_SUCCESS) {
-			/* Setup IPA system pipes */
-			if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config)) {
-				ret = wlan_ipa_setup_sys_pipe(ipa_ctx);
-				if (ret)
-					goto ipa_wdi_destroy;
-
-				qdf_create_work(0, &ipa_ctx->mcc_work,
-						wlan_ipa_mcc_work_handler,
-						ipa_ctx);
-			}
-		} else if (status == QDF_STATUS_E_BUSY) {
-			ret = wlan_ipa_uc_send_wdi_control_msg(false);
-			if (ret) {
-				ipa_err("IPA WDI msg send failed: ret=%d", ret);
-				goto ipa_wdi_destroy;
-			}
-		} else {
+		if (status == QDF_STATUS_E_BUSY)
+			status = wlan_ipa_uc_send_wdi_control_msg(false);
+		if (status != QDF_STATUS_SUCCESS) {
 			ipa_err("IPA WDI init failed: ret=%d", status);
-			goto ipa_wdi_destroy;
+			goto fail_create_sys_pipe;
 		}
 	} else {
 		ret = wlan_ipa_setup_sys_pipe(ipa_ctx);
 		if (ret)
-			goto ipa_wdi_destroy;
+			goto fail_create_sys_pipe;
 	}
 
 	qdf_event_create(&ipa_ctx->ipa_resource_comp);
@@ -2599,7 +2468,7 @@ QDF_STATUS wlan_ipa_setup(struct wlan_ipa_priv *ipa_ctx,
 
 	return QDF_STATUS_SUCCESS;
 
-ipa_wdi_destroy:
+fail_create_sys_pipe:
 	wlan_ipa_wdi_destroy_rm(ipa_ctx);
 
 fail_setup_rm:
@@ -2749,18 +2618,6 @@ static void wlan_ipa_uc_loaded_handler(struct wlan_ipa_priv *ipa_ctx)
 		ipa_err("qdf_dev is null");
 		return;
 	}
-
-	if (wlan_ipa_uc_sta_is_enabled(ipa_ctx->config)) {
-		/* Setup IPA system pipes */
-		status = wlan_ipa_setup_sys_pipe(ipa_ctx);
-		if (status) {
-			ipa_err("Fail to setup sys pipes (status=%d)", status);
-			return;
-		}
-		qdf_create_work(0, &ipa_ctx->mcc_work,
-				wlan_ipa_mcc_work_handler, ipa_ctx);
-	}
-
 	/* Connect pipe */
 	status = wlan_ipa_wdi_setup(ipa_ctx, qdf_dev);
 	if (status) {
@@ -3121,27 +2978,6 @@ static QDF_STATUS wlan_ipa_uc_send_evt(qdf_netdev_t net_dev,
 	return QDF_STATUS_SUCCESS;
 }
 
-void wlan_ipa_uc_cleanup_sta(struct wlan_ipa_priv *ipa_ctx,
-			     qdf_netdev_t net_dev)
-{
-	struct wlan_ipa_iface_context *iface_ctx;
-	int i;
-
-	ipa_debug("enter");
-
-	for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
-		iface_ctx = &ipa_ctx->iface_context[i];
-		if (iface_ctx && iface_ctx->device_mode == QDF_STA_MODE &&
-		    iface_ctx->dev == net_dev && iface_ctx->tl_context) {
-			wlan_ipa_uc_send_evt(net_dev, QDF_IPA_STA_DISCONNECT,
-					     net_dev->dev_addr);
-			wlan_ipa_cleanup_iface(iface_ctx);
-		}
-	}
-
-	ipa_debug("exit");
-}
-
 QDF_STATUS wlan_ipa_uc_disconnect_ap(struct wlan_ipa_priv *ipa_ctx,
 				     qdf_netdev_t net_dev)
 {
@@ -3170,11 +3006,12 @@ void wlan_ipa_cleanup_dev_iface(struct wlan_ipa_priv *ipa_ctx,
 
 	for (i = 0; i < WLAN_IPA_MAX_IFACE; i++) {
 		iface_ctx = &ipa_ctx->iface_context[i];
-		if (iface_ctx->dev == net_dev) {
-			wlan_ipa_cleanup_iface(iface_ctx);
+		if (iface_ctx->dev == net_dev)
 			break;
-		}
 	}
+
+	if (iface_ctx)
+		wlan_ipa_cleanup_iface(iface_ctx);
 }
 
 void wlan_ipa_uc_ssr_cleanup(struct wlan_ipa_priv *ipa_ctx)

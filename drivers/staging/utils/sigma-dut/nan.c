@@ -573,9 +573,6 @@ int sigma_nan_enable(struct sigma_dut *dut, struct sigma_conn *conn,
 		req.sdf_2dot4g_val = 1;
 	}
 
-	if (if_nametoindex(NAN_AWARE_IFACE))
-		run_system_wrapper(dut, "ifconfig %s up", NAN_AWARE_IFACE);
-
 	nan_enable_request(0, dut->wifi_hal_iface_handle, &req);
 
 	if (nan_availability) {
@@ -1768,6 +1765,8 @@ int sigma_nan_publish_request(struct sigma_dut *dut, struct sigma_conn *conn,
 		tlv_len += len;
 
 		cfg_debug.cmd = NAN_TEST_MODE_CMD_TRANSPORT_IP_PARAM;
+		memcpy(cfg_debug.debug_cmd_data, &ndp_ip_trans_param,
+		       sizeof(NdpIpTransParams));
 		nan_debug_command_config(0, dut->wifi_hal_iface_handle,
 					 cfg_debug, tlv_len + sizeof(u32));
 	}
@@ -2209,9 +2208,6 @@ void nan_event_disabled(NanDisabledInd *event)
 	sigma_dut_print(global_dut, DUT_MSG_INFO, "%s: reason %d",
 			__func__, event->reason);
 	/* pthread_cond_signal(&gCondition); */
-	if (if_nametoindex(NAN_AWARE_IFACE))
-		run_system_wrapper(global_dut, "ifconfig %s down",
-				   NAN_AWARE_IFACE);
 }
 
 
@@ -2446,10 +2442,6 @@ int nan_cmd_sta_exec_action(struct sigma_dut *dut, struct sigma_conn *conn,
 
 		memcpy(cfg_debug.debug_cmd_data, &device_type_val, sizeof(u32));
 		size = sizeof(u32) + sizeof(u32);
-
-		if (if_nametoindex(NAN_AWARE_IFACE))
-		    run_system_wrapper(dut, "ifconfig %s up", NAN_AWARE_IFACE);
-
 		sigma_dut_print(dut, DUT_MSG_INFO,
 				"%s: Device Type: cmd type = %d and command data = %u",
 				__func__, cfg_debug.cmd, device_type_val);
