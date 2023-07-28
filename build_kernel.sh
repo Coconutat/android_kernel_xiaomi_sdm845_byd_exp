@@ -17,7 +17,7 @@ start_time=$(date +%Y.%m.%d-%I:%M)
 
 start_time_sum=$(date +%s)
 
-make ARCH=arm64 O=out ursa_stock_defconfig
+make ARCH=arm64 O=out generic_xiaomi_sdm845_defconfig
 # 定义编译线程数
 make ARCH=arm64 O=out -j12 2>&1 | tee kernel_log-${start_time}.txt
 
