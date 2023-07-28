@@ -2,7 +2,7 @@
 #设置环境
 
 # 交叉编译器路径
-export PATH=$PATH:/home/coconutat/github/ToolChains/bin
+export PATH=$PATH:/home/coconutat/github/gcc-linaro-5.5.0-2017.10-x86_64_aarch64-linux-gnu/bin
 export CROSS_COMPILE=aarch64-linux-gnu-
 export CONFIG_BUILD_ARM64_DT_OVERLAY=y
 
@@ -13,7 +13,7 @@ if [ ! -d "out" ]; then
 	mkdir out
 fi
 
-start_time=$(date +%Y.%m.%d-%I:%M)
+start_time=$(date +%Y.%m.%d-%I_%M)
 
 start_time_sum=$(date +%s)
 
@@ -23,7 +23,7 @@ make ARCH=arm64 O=out -j12 2>&1 | tee kernel_log-${start_time}.txt
 
 end_time_sum=$(date +%s)
 
-end_time=$(date +%Y.%m.%d-%I:%M)
+end_time=$(date +%Y.%m.%d-%I_%M)
 
 # 计算运行时间（秒）
 duration=$((end_time_sum - start_time_sum))
