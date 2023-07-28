@@ -2,7 +2,7 @@
  Xiaomi Mi 8 Series Kernel  
  Based Version:Android Q Version  
  ***  
-![GitHub all releases](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)
+![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)
 
 
  [下载统计](https://gra.caldis.me/?url=https://github.com/Coconutat/android_kernel_xiaomi_sdm845_exp)  
