@@ -2,7 +2,7 @@
 ## osm0sis @ xda-developers
 
 properties() { '
-kernel.string=Xiaomi Mi 8 Explorer Edition & UD Kernel Mod For MIUI 12.5.x Version -- Kernel by Coconutat_Ian @ Github
+kernel.string=Xiaomi Mi 8 Explorer Edition & UD Kernel Mod with KernelSU For MIUI 12.5.x Version -- Kernel by Coconutat_Ian @ Github
 do.devicecheck=1
 do.modules=0
 do.systemless=1
