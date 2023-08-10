@@ -65,7 +65,7 @@ jobs:
        cp -vf tools/AnyKernel3_sh/banner tools/AnyKernel3/
        
 
-    - name: Upload P10-KSU-Kernel
+    - name: Upload KSU-Kernel
       uses: actions/upload-artifact@v3
       with:
         name: Mi8_sdm845-generic_MIUI_12.5_Kernel-${{ steps.get_time.outputs.TIME }}
