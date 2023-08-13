@@ -564,7 +564,7 @@ done:
 }
 
 
-void apr_cb_func(void *buf, int len, void *priv)
+__maybe_unused void apr_cb_func(void *buf, int len, void *priv)
 {
 	struct apr_client_data data;
 	struct apr_client *apr_client;
