@@ -392,16 +392,12 @@ LINUXINCLUDE    := \
 
 LINUXINCLUDE	+= $(filter-out $(LINUXINCLUDE),$(USERINCLUDE))
 
-#
-# Original Werror
-# -Werror-implicit-function-declaration	\
-# -Wformat-security \
-#
+# -Werror-implicit-function-declaration
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common -fshort-wchar \
 		   -Wno-format-security \
-		   -Wformat \
+		   -Wformat -Wformat-security \
 		   -std=gnu89
 
 KBUILD_CPPFLAGS := -D__KERNEL__
