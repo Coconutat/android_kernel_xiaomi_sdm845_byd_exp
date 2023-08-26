@@ -1,5 +1,5 @@
-@@ -1,72 +0,0 @@
 name: Build Xiaomi Mi 8 Pro or Explorer Edition
+
 on:
   workflow_dispatch:
   schedule:
