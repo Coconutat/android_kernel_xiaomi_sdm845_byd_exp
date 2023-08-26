@@ -2,7 +2,7 @@
 #设置环境
 
 # 交叉编译器路径
-export PATH=$PATH:$(pwd)/../gcc-linaro-5.5.0-2017.10-x86_64_aarch64-linux-gnu/bin
+export PATH=$(pwd)/ToolChains/bin/:$PATH
 export CROSS_COMPILE=aarch64-linux-gnu-
 export CONFIG_BUILD_ARM64_DT_OVERLAY=y
 
@@ -37,18 +37,14 @@ seconds=$((duration % 60))
 echo "脚本运行时间为：${hours}小时 ${minutes}分钟 ${seconds}秒"
 
 if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
-	echo "***Packing kernel...***"
+	echo "***Copy kernel...***"
+
 	cp out/arch/arm64/boot/Image.gz tools/AnyKernel3/Image.gz
 	cp out/arch/arm64/boot/Image.gz-dtb tools/AnyKernel3/Image.gz-dtb
 	cp -vf tools/AnyKernel3_sh/anykernel.sh tools/AnyKernel3/
 	cp -vf tools/AnyKernel3_sh/banner tools/AnyKernel3/
-	cd tools/AnyKernel3
-	zip -r9 Mi8_sdm845-generic_MIUI_12.5_Kernel-${end_time}.zip * > /dev/null
-	cd ../..
-	mv tools/AnyKernel3/Mi8_sdm845-generic_MIUI_12.5_Kernel-${end_time}.zip Mi8_sdm845-generic_MIUI_12.5_Kernel-${end_time}.zip
-	rm -rf tools/AnyKernel3/Image.gz
-	rm -rf tools/AnyKernel3/Image.gz-dtb
-	echo "***Sucessfully built kernel...***"
+
+	echo "***Sucessfully copy kernel...***"
 	echo " "
 	exit 0
 else
