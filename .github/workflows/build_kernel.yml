@@ -27,7 +27,6 @@ jobs:
         sudo apt-get update -y 
         sudo apt install binutils make python2 python libssl-dev flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev adb fastboot -y
         git clone https://github.com/Coconutat/ToolChains.git --dept=1 -b linaro_gcc_4.9
-        make mrproper
     
     - name: GetTime
       id: get_time
@@ -37,6 +36,13 @@ jobs:
     - name: Clean
       run: |
         bash clean.sh
+        cd tools
+        rm -rf AnyKernel3
+        git clone https://github.com/osm0sis/AnyKernel3.git
+        cd AnyKernel3
+        rm -rf .git .github
+        cd ..
+        cd ..
 
     - name: Build Kernel
       run: |
@@ -44,6 +50,10 @@ jobs:
         rm -rf drivers/kernelsu
         curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
         bash build_kernel_github.sh
+        cp -vf out/arch/arm64/boot/Image.gz tools/AnyKernel3/Image.gz 
+        cp -vf out/arch/arm64/boot/Image.gz-dtb tools/AnyKernel3/Image.gz-dtb
+        cp -vf tools/AnyKernel3_sh/anykernel.sh tools/AnyKernel3/
+        cp -vf tools/AnyKernel3_sh/banner tools/AnyKernel3/
        
 
     - name: Upload KSU-Kernel
