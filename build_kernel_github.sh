@@ -3,7 +3,7 @@
 
 # 交叉编译器路径
 export PATH=$(pwd)/ToolChains/bin/:$PATH
-export CROSS_COMPILE=aarch64-linux-android-
+export CROSS_COMPILE=aarch64-linux-gnu-
 export CONFIG_BUILD_ARM64_DT_OVERLAY=y
 
 export ARCH=arm64
