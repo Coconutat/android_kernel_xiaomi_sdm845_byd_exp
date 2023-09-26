@@ -14,6 +14,10 @@
  make clean  
  make mrproper  
  ```
+ And,Please install dtc tools.
+ ```
+ sudo apt-get install device-tree-compiler
+ ```
  ***  
  Looking for a version for [LineageOS 20](https://lineageos.org/)?  
  Look here:[android_kernel_xiaomi_sdm845_lineageos_Exp](https://github.com/Coconutat/android_kernel_xiaomi_sdm845_lineageos_Exp)  
