@@ -2,7 +2,7 @@
 #设置环境
 
 # 交叉编译器路径
-export PATH=$PATH:$(pwd)/../proton-clang-master/bin
+export PATH=$PATH:$(pwd)/../Compiler/Proton-Clang/bin
 export CC=clang
 export CLANG_TRIPLE=aarch64-linux-gnu-
 export CROSS_COMPILE=aarch64-linux-gnu-
