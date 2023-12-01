@@ -14,9 +14,9 @@
  Based CAF Tag:LA.UM.6.3.r4-03000-sdm845.0  
  ***
  **Kernel Feature**:  
-    + Support **Mi 8 Explorer Edition & UD**
-    + Support **KernelSU**
-    + Support **Wireguard**
+   + Support **Mi 8 Explorer Edition & UD**  
+   + Support **KernelSU**  
+   + Support **Wireguard**    
  ***
 ![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)  
  ***  
