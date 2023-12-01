@@ -1,7 +1,24 @@
-# android_kernel_xiaomi_mi8_series
- Xiaomi Mi 8 Series Kernel  
- Based OS Version:Android Q Version  
+# Mi 8 Explorer Edition & UD BYD-Kernel For MIUI 12.5.x Version
+ Mi 8 Explorer Edition & UD **BYD-Kernel** For MIUI 12.5.x Version
  ***  
+   ______   ______    _  _______ ____  _   _ _____ _     
+ | __ ) \ / /  _ \  | |/ / ____|  _ \| \ | | ____| |    
+ |  _ \\ V /| | | | | ' /|  _| | |_) |  \| |  _| | |    
+ | |_) || | | |_| | | . \| |___|  _ <| |\  | |___| |___ 
+ |____/ |_| |____/  |_|\_\_____|_| \_\_| \_|_____|_____|
+                                                          
+ ***
+ ## Warning:  
+ **NOT SUPPORT Mi 8 Standard Edition(dipper)!!!**    
+ ***
+ Based OS Version:Android Q Version  
+ Based CAF Tag:LA.UM.6.3.r4-03000-sdm845.0  
+ ***
+ **Kernel Feature**:  
+    + Support **Mi 8 Explorer Edition & UD**
+    + Support **KernelSU**
+    + Support **Wireguard**
+ ***
 ![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)  
  ***  
  Kernel Use compiler is [Proton-Clang](https://github.com/kdrag0n/proton-clang).
