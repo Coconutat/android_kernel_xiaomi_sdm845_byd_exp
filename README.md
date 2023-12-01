@@ -1,12 +1,9 @@
 # Mi 8 Explorer Edition & UD BYD-Kernel For MIUI 12.5.x Version
  Mi 8 Explorer Edition & UD **BYD-Kernel** For MIUI 12.5.x Version
  ***  
-   ______   ______    _  _______ ____  _   _ _____ _     
- | __ ) \ / /  _ \  | |/ / ____|  _ \| \ | | ____| |    
- |  _ \\ V /| | | | | ' /|  _| | |_) |  \| |  _| | |    
- | |_) || | | |_| | | . \| |___|  _ <| |\  | |___| |___ 
- |____/ |_| |____/  |_|\_\_____|_| \_\_| \_|_____|_____|
-                                                          
+<div align="center">
+<img src="https://raw.githubusercontent.com/Coconutat/android_kernel_xiaomi_sdm845_exp/misc/ascii-text-art.png" alt="BYD_KERNEL Logo"> 
+</div>
  ***
  ## Warning:  
  **NOT SUPPORT Mi 8 Standard Edition(dipper)!!!**    
