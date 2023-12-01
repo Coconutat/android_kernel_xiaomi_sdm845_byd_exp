@@ -770,7 +770,7 @@ static int __check_input_term(struct mixer_build *state, int id,
 			} else { /* UAC_VERSION_3 */
 				struct uac3_input_terminal_descriptor *d = p1;
 
-				err = check_input_term(state,
+				err = __check_input_term(state,
 							d->bCSourceID, term);
 				if (err < 0)
 					return err;
@@ -1975,6 +1975,7 @@ static int parse_audio_mixer_unit(struct mixer_build *state, int unitid,
 			      "invalid MIXER UNIT descriptor %d\n",
 			      unitid);
 		return -EINVAL;
+		}
 	}
 
 	num_ins = 0;
