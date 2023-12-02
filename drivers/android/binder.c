@@ -3,7 +3,6 @@
  * Android IPC Subsystem
  *
  * Copyright (C) 2007-2008 Google, Inc.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -135,8 +134,7 @@ enum {
 	BINDER_DEBUG_PRIORITY_CAP           = 1U << 13,
 	BINDER_DEBUG_SPINLOCKS              = 1U << 14,
 };
-static uint32_t binder_debug_mask = BINDER_DEBUG_USER_ERROR |
-	BINDER_DEBUG_FAILED_TRANSACTION | BINDER_DEBUG_DEAD_TRANSACTION;
+static uint32_t binder_debug_mask = 0;
 module_param_named(debug_mask, binder_debug_mask, uint, 0644);
 
 static char *binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
@@ -356,8 +354,6 @@ struct binder_error {
  * @inherit_rt:           inherit RT scheduling policy from caller
  * @txn_security_ctx:     require sender's security context
  *                        (invariant after initialized)
- * @txn_security_ctx:     require sender's security context
- *                        (invariant after initialized)
  * @async_todo:           list of async work items
  *                        (protected by @proc->inner_lock)
  *
@@ -528,7 +524,8 @@ struct binder_priority {
  * @requested_threads_started: number binder threads started
  *                        (protected by @inner_lock)
  * @tmp_ref:              temporary reference to indicate proc is in use
- *                        (protected by @inner_lock)
+ *                        (atomic since @proc->inner_lock cannot
+ *                        always be acquired)
  * @default_priority:     default scheduler priority
  *                        (invariant after initialized)
  * @debugfs_entry:        debugfs node
@@ -562,7 +559,7 @@ struct binder_proc {
 	int max_threads;
 	int requested_threads;
 	int requested_threads_started;
-	int tmp_ref;
+	atomic_t tmp_ref;
 	struct binder_priority default_priority;
 	struct dentry *debugfs_entry;
 	struct binder_alloc alloc;
@@ -577,8 +574,7 @@ enum {
 	BINDER_LOOPER_STATE_EXITED      = 0x04,
 	BINDER_LOOPER_STATE_INVALID     = 0x08,
 	BINDER_LOOPER_STATE_WAITING     = 0x10,
-	BINDER_LOOPER_STATE_NEED_RETURN = 0x20,
-	BINDER_LOOPER_STATE_POLL	= 0x40,
+	BINDER_LOOPER_STATE_POLL        = 0x20,
 };
 
 /**
@@ -2074,9 +2070,9 @@ static void binder_thread_dec_tmpref(struct binder_thread *thread)
 static void binder_proc_dec_tmpref(struct binder_proc *proc)
 {
 	binder_inner_proc_lock(proc);
-	proc->tmp_ref--;
+	atomic_dec(&proc->tmp_ref);
 	if (proc->is_dead && RB_EMPTY_ROOT(&proc->threads) &&
-			!proc->tmp_ref) {
+			!atomic_read(&proc->tmp_ref)) {
 		binder_inner_proc_unlock(proc);
 		binder_free_proc(proc);
 		return;
@@ -2138,8 +2134,26 @@ static struct binder_thread *binder_get_txn_from_and_acq_inner(
 
 static void binder_free_transaction(struct binder_transaction *t)
 {
-	if (t->buffer)
-		t->buffer->transaction = NULL;
+	struct binder_proc *target_proc;
+
+	spin_lock(&t->lock);
+	target_proc = t->to_proc;
+	if (target_proc) {
+		atomic_inc(&target_proc->tmp_ref);
+		spin_unlock(&t->lock);
+
+		binder_inner_proc_lock(target_proc);
+		if (t->buffer)
+			t->buffer->transaction = NULL;
+		binder_inner_proc_unlock(target_proc);
+		binder_proc_dec_tmpref(target_proc);
+	} else {
+		/*
+		 * If the transaction has no target_proc, then
+		 * t->buffer->transaction * has already been cleared.
+		 */
+		spin_unlock(&t->lock);
+	}
 	kfree(t);
 	binder_stats_deleted(BINDER_STAT_TRANSACTION);
 }
@@ -2971,7 +2985,7 @@ static struct binder_node *binder_get_node_refs_for_txn(
 		target_node = node;
 		binder_inc_node_nilocked(node, 1, 0, NULL);
 		binder_inc_node_tmpref_ilocked(node);
-		node->proc->tmp_ref++;
+		atomic_inc(&node->proc->tmp_ref);
 		*procp = node->proc;
 	} else
 		*error = BR_DEAD_REPLY;
@@ -3068,7 +3082,7 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_dead_binder;
 		}
 		target_proc = target_thread->proc;
-		target_proc->tmp_ref++;
+		atomic_inc(&target_proc->tmp_ref);
 		binder_inner_proc_unlock(target_thread->proc);
 	} else {
 		if (tr->target.handle) {
@@ -3334,7 +3348,8 @@ static void binder_transaction(struct binder_proc *proc,
 	buffer_offset = off_start_offset;
 	off_end_offset = off_start_offset + tr->offsets_size;
 	sg_buf_offset = ALIGN(off_end_offset, sizeof(void *));
-	sg_buf_end_offset = sg_buf_offset + extra_buffers_size;
+	sg_buf_end_offset = sg_buf_offset + extra_buffers_size -
+		ALIGN(secctx_sz, sizeof(u64));
 	off_min = 0;
 	for (buffer_offset = off_start_offset; buffer_offset < off_end_offset;
 	     buffer_offset += sizeof(binder_size_t)) {
@@ -3420,7 +3435,7 @@ static void binder_transaction(struct binder_proc *proc,
 			binder_size_t parent_offset;
 			struct binder_fd_array_object *fda =
 				to_binder_fd_array_object(hdr);
-			size_t num_valid = (buffer_offset - off_start_offset) *
+			size_t num_valid = (buffer_offset - off_start_offset) /
 						sizeof(binder_size_t);
 			struct binder_buffer_object *parent =
 				binder_validate_ptr(target_proc, t->buffer,
@@ -3494,7 +3509,7 @@ static void binder_transaction(struct binder_proc *proc,
 				t->buffer->user_data + sg_buf_offset;
 			sg_buf_offset += ALIGN(bp->length, sizeof(u64));
 
-			num_valid = (buffer_offset - off_start_offset) *
+			num_valid = (buffer_offset - off_start_offset) /
 					sizeof(binder_size_t);
 			ret = binder_fixup_parent(t, thread, bp,
 						  off_start_offset,
@@ -3847,10 +3862,12 @@ static int binder_thread_write(struct binder_proc *proc,
 				     buffer->debug_id,
 				     buffer->transaction ? "active" : "finished");
 
+			binder_inner_proc_lock(proc);
 			if (buffer->transaction) {
 				buffer->transaction->buffer = NULL;
 				buffer->transaction = NULL;
 			}
+			binder_inner_proc_unlock(proc);
 			if (buffer->async_transaction && buffer->target_node) {
 				struct binder_node *buf_node;
 				struct binder_work *w;
@@ -4710,7 +4727,7 @@ static int binder_thread_release(struct binder_proc *proc,
 	 * The corresponding dec is when we actually
 	 * free the thread in binder_free_thread()
 	 */
-	proc->tmp_ref++;
+	atomic_inc(&proc->tmp_ref);
 	/*
 	 * take a ref on this thread to ensure it
 	 * survives while we are releasing it
@@ -4763,16 +4780,7 @@ static int binder_thread_release(struct binder_proc *proc,
 		wake_up_poll(&thread->wait, POLLHUP | POLLFREE);
 	}
 
-	/*
-	 * If this thread used poll, make sure we remove the waitqueue
-	 * from any epoll data structures holding it with POLLFREE.
-	 * waitqueue_active() is safe to use here because we're holding
-	 * the global lock.
-	 */
-	if ((thread->looper & BINDER_LOOPER_STATE_POLL) &&
-	    waitqueue_active(&thread->wait)) {
-		wake_up_poll(&thread->wait, POLLHUP | POLLFREE);
-	}
+	binder_inner_proc_unlock(thread->proc);
 
 	/*
 	 * This is needed to avoid races between wake_up_poll() above and
@@ -4801,10 +4809,9 @@ static unsigned int binder_poll(struct file *filp,
 	if (!thread)
 		return POLLERR;
 
+	binder_inner_proc_lock(thread->proc);
 	thread->looper |= BINDER_LOOPER_STATE_POLL;
-
-	wait_for_proc_work = thread->transaction_stack == NULL &&
-		list_empty(&thread->todo) && thread->return_error == BR_OK;
+	wait_for_proc_work = binder_available_for_proc_work_ilocked(thread);
 
 	binder_inner_proc_unlock(thread->proc);
 
@@ -5215,6 +5222,7 @@ static int binder_open(struct inode *nodp, struct file *filp)
 		return -ENOMEM;
 	spin_lock_init(&proc->inner_lock);
 	spin_lock_init(&proc->outer_lock);
+	atomic_set(&proc->tmp_ref, 0);
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
 	mutex_init(&proc->files_lock);
@@ -5394,7 +5402,7 @@ static void binder_deferred_release(struct binder_proc *proc)
 	 * Make sure proc stays alive after we
 	 * remove all the threads
 	 */
-	proc->tmp_ref++;
+	atomic_inc(&proc->tmp_ref);
 
 	proc->is_dead = true;
 	threads = 0;

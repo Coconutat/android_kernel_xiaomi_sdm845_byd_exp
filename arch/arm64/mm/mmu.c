@@ -28,8 +28,6 @@
 #include <linux/memblock.h>
 #include <linux/fs.h>
 #include <linux/io.h>
-#include <linux/slab.h>
-#include <linux/stop_machine.h>
 #include <linux/dma-contiguous.h>
 #include <linux/cma.h>
 #include <linux/mm.h>
@@ -214,7 +212,6 @@ static void alloc_init_pmd(pud_t *pud, unsigned long addr, unsigned long end,
 		if (((addr | next | phys) & ~SECTION_MASK) == 0 &&
 		      allow_block_mappings &&
 		      !dma_overlap(phys, phys + next - addr)) {
-			pmd_t old_pmd =*pmd;
 			pmd_set_huge(pmd, phys, prot);
 
 			/*
@@ -275,7 +272,6 @@ static void alloc_init_pud(pgd_t *pgd, unsigned long addr, unsigned long end,
 		 */
 		if (use_1G_block(addr, next, phys) && allow_block_mappings &&
 		    !dma_overlap(phys, phys + next - addr)) {
-			pud_t old_pud = *pud;
 			pud_set_huge(pud, phys, prot);
 
 			/*
@@ -541,8 +537,8 @@ static void __init map_kernel(pgd_t *pgd)
 		 * entry instead.
 		 */
 		BUG_ON(!IS_ENABLED(CONFIG_ARM64_16K_PAGES));
-		set_pud(pud_set_fixmap_offset(pgd, FIXADDR_START),
-			__pud(__pa_symbol(bm_pmd) | PUD_TYPE_TABLE));
+		pud_populate(&init_mm, pud_set_fixmap_offset(pgd, FIXADDR_START),
+			     lm_alias(bm_pmd));
 		pud_clear_fixmap();
 	} else {
 		BUG();
@@ -856,12 +852,12 @@ int pud_set_huge(pud_t *pudp, phys_addr_t phys, pgprot_t prot)
 	pud_t new_pud = pfn_pud(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
-	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pud)),
+	if (!pgattr_change_is_safe(READ_ONCE(pud_val(*pudp)),
 				   pud_val(new_pud)))
 		return 0;
 
 	BUG_ON(phys & ~PUD_MASK);
-	set_pud(pud, new_pud);
+	set_pud(pudp, new_pud);
 	return 1;
 }
 
@@ -872,12 +868,12 @@ int pmd_set_huge(pmd_t *pmdp, phys_addr_t phys, pgprot_t prot)
 	pmd_t new_pmd = pfn_pmd(__phys_to_pfn(phys), sect_prot);
 
 	/* Only allow permission changes for now */
-	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmd)),
+	if (!pgattr_change_is_safe(READ_ONCE(pmd_val(*pmdp)),
 				   pmd_val(new_pmd)))
 		return 0;
 
 	BUG_ON(phys & ~PMD_MASK);
-	set_pmd(pmd, new_pmd);
+	set_pmd(pmdp, new_pmd);
 	return 1;
 }
 

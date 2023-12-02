@@ -2862,7 +2862,6 @@ static int sd_revalidate_disk(struct gendisk *disk)
 		rw_max = q->limits.io_opt =
 						sdkp->opt_xfer_blocks * sdp->sector_size;
 	} else {
-		q->limits.io_opt = 0;
 		rw_max = min_not_zero(logical_to_sectors(sdp, dev_max),
 				      (sector_t)BLK_DEF_MAX_SECTORS);
 	}
@@ -3421,4 +3420,3 @@ static void sd_print_result(const struct scsi_disk *sdkp, const char *msg,
 			  "%s: Result: hostbyte=0x%02x driverbyte=0x%02x\n",
 			  msg, host_byte(result), driver_byte(result));
 }
-

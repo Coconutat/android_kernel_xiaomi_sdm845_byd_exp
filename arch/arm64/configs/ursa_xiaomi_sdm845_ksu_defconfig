@@ -3557,7 +3557,6 @@ CONFIG_HID_SONY=y
 # CONFIG_HID_ZYDACRON is not set
 # CONFIG_HID_SENSOR_HUB is not set
 # CONFIG_HID_ALPS is not set
-# CONFIG_HID_QVR is not set
 
 #
 # USB HID support
