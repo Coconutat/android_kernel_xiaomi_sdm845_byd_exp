@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -66,6 +66,17 @@
 #define QCA_OUI 0xf0fd8c
 #define QCA_OUI_WHC_TYPE  0x00
 
+#define ADAPTIVE_11R_OUI      0x964000
+#define ADAPTIVE_11R_OUI_TYPE 0x2C
+
+#define OUI_LENGTH              4
+#define OUI_TYPE_BITS           24
+#define MAX_ADAPTIVE_11R_IE_LEN 8
+
+#define SAE_SINGLE_PMK_OUI          0x964000
+#define SAE_SINGLE_PMK_TYPE         0x03
+#define MAX_SAE_SINGLE_PMK_IE_LEN   8
+
 /* Temporary vendor specific IE for 11n pre-standard interoperability */
 #define VENDOR_HT_OUI       0x00904c
 #define VENDOR_HT_CAP_ID    51
@@ -106,6 +117,17 @@
 #define WLAN_MOBILITY_DOMAIN_IE_MAX_LEN          3
 #define WLAN_OPMODE_IE_MAX_LEN                   1
 #define WLAN_IBSSDFS_IE_MIN_LEN                  7
+
+/* Wide band channel switch IE length */
+#define WLAN_WIDE_BW_CHAN_SWITCH_IE_LEN          3
+
+/* Number of max TX power elements supported plus size of Transmit Power
+ * Information element.
+ */
+#define WLAN_TPE_IE_MAX_LEN                      9
+
+/* Max channel switch time IE length */
+#define WLAN_MAX_CHAN_SWITCH_TIME_IE_LEN         4
 
 /* HT capability flags */
 #define WLAN_HTCAP_C_ADVCODING             0x0001
@@ -406,8 +428,10 @@ enum extn_element_ie {
 #define WLAN_AKM_SHA256_IEEE8021X 0x05
 #define WLAN_AKM_SHA256_PSK       0x06
 #define WLAN_AKM_SAE              0x08
+#define WLAN_AKM_FT_SAE           0x09
 #define WLAN_AKM_SUITEB_EAP_SHA256 0x0B
 #define WLAN_AKM_SUITEB_EAP_SHA384 0x0C
+#define WLAN_AKM_FT_SUITEB_EAP_SHA384 0x0D
 #define WLAN_AKM_FILS_SHA256      0x0E
 #define WLAN_AKM_FILS_SHA384      0x0F
 #define WLAN_AKM_FILS_FT_SHA256   0x10
@@ -1324,6 +1348,8 @@ is_bwnss_oui(uint8_t *frm)
 		((ATH_OUI_BW_NSS_MAP_TYPE << 24) | ATH_OUI));
 }
 
+#define WLAN_BWNSS_MAP_OFFSET 6
+
 /**
  * is_he_cap_oui() - If vendor IE is HE CAP OUI
  * @frm: vendor IE pointer
@@ -1352,6 +1378,36 @@ is_he_op_oui(uint8_t *frm)
 {
 	return (frm[1] > 4) && (LE_READ_4(frm + 2) ==
 		((ATH_HE_OP_SUBTYPE << 24) | ATH_HE_OUI));
+}
+
+/**
+ * is_adaptive_11r_oui() - Function to check if vendor IE is ADAPTIVE 11R OUI
+ * @frm: vendor IE pointer
+ *
+ * API to check if vendor IE is ADAPTIVE 11R OUI
+ *
+ * Return: true if its ADAPTIVE 11r OUI
+ */
+static inline bool
+is_adaptive_11r_oui(uint8_t *frm)
+{
+	return (frm[1] > OUI_LENGTH) && (LE_READ_4(frm + 2) ==
+		((ADAPTIVE_11R_OUI_TYPE << OUI_TYPE_BITS) | ADAPTIVE_11R_OUI));
+}
+
+/**
+ * is_sae_single_pmk_oui() - Fun to check if vendor IE is sae single pmk OUI
+ * @frm: vendor IE pointer
+ *
+ * API to check if vendor IE is sae single pmk OUI
+ *
+ * Return: true if its sae single pmk OUI
+ */
+static inline bool
+is_sae_single_pmk_oui(uint8_t *frm)
+{
+	return (frm[1] > OUI_LENGTH) && (LE_READ_4(frm + 2) ==
+		((SAE_SINGLE_PMK_TYPE << OUI_TYPE_BITS) | SAE_SINGLE_PMK_OUI));
 }
 
 /**
@@ -1467,7 +1523,8 @@ static inline QDF_STATUS wlan_parse_rsn_ie(uint8_t *rsn_ie,
 		rsn->pmkid_count = LE_READ_2(ie);
 		ie += 2;
 		rem_len -= 2;
-		if (rsn->pmkid_count > (unsigned int) rem_len / PMKID_LEN) {
+		if (rsn->pmkid_count > MAX_PMKID ||
+		    rsn->pmkid_count > (unsigned int)rem_len / PMKID_LEN) {
 			rsn->pmkid_count = 0;
 			return QDF_STATUS_E_INVAL;
 		}
@@ -1654,9 +1711,12 @@ static inline void wlan_parse_wapi_ie(uint8_t *wapi_ie,
 		len -= WLAN_OUI_SIZE;
 	}
 
+	if (len < 2)
+		return;
 	wapi->uc_cipher_count = LE_READ_2(ie);
 	ie += 2;
 	len -= 2;
+
 	if ((wapi->uc_cipher_count > WLAN_MAX_CIPHER) ||
 	   len < (wapi->uc_cipher_count * WLAN_OUI_SIZE + 2))
 		return;
