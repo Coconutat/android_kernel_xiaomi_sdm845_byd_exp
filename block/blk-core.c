@@ -326,27 +326,10 @@ EXPORT_SYMBOL_GPL(__blk_run_queue_uncond);
  */
 void __blk_run_queue(struct request_queue *q)
 {
-	u64 s_running_time, s_runnable_time;
-	unsigned long s_total_time;
-	unsigned int delta;
-
 	if (unlikely(blk_queue_stopped(q)))
 		return;
 
-	s_total_time = jiffies;
-	s_running_time = current->se.sum_exec_runtime;
-	s_runnable_time = current->sched_info.run_delay;
 	__blk_run_queue_uncond(q);
-	if (IO_SHOW_LOG) {
-		delta = jiffies_to_msecs(jiffies - s_total_time);
-		if (delta > IO_BLK_DRIVER_LEVEL) {
-			pr_info("Slow IO Driver:  %d(%s) prio(%d|%d), total_time(%dms) running_time(%lluns) runnable(%lluns)\n",
-				current->pid, current->comm,
-				current->policy, current->prio, delta,
-				current->se.sum_exec_runtime - s_running_time,
-				current->sched_info.run_delay - s_runnable_time);
-		}
-	}
 }
 EXPORT_SYMBOL(__blk_run_queue);
 

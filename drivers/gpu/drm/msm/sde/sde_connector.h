@@ -404,7 +404,6 @@ struct sde_connector {
 	bool allow_bl_update;
 
 	bool last_cmd_tx_sts;
-	bool panel_dead_skip;
 };
 
 /**

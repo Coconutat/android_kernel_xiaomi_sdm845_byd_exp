@@ -476,7 +476,6 @@ struct kgsl_process_private {
 	int fd_count;
 	atomic_t ctxt_count;
 	spinlock_t ctxt_count_lock;
-	ktime_t last_oom_time;
 };
 
 /**

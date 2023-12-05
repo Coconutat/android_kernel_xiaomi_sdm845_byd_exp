@@ -1239,13 +1239,8 @@ static unsigned long vco_10nm_recalc_rate(struct clk_hw *hw,
 		return 0;
 	}
 
-	pll->handoff_resources = true;
-	if (dsi_pll_10nm_lock_status(pll)) {
-		pr_debug("PLL not enabled\n");
-		pll->handoff_resources = false;
-		goto end;
-	}
-
+	if (!dsi_pll_10nm_lock_status(pll))
+		pll->handoff_resources = true;
 
 	(void)mdss_pll_resource_enable(pll, false);
 
