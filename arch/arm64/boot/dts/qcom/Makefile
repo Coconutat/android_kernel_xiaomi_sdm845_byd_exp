@@ -70,15 +70,10 @@ else
 			sdm845-v2-cdp.dtb \
 			sdm845-qrd.dtb \
 			sdm845-v2-qrd.dtb \
-			sdm845-v2-qvr-evt.dtb \
-			sdm845-v2-qvr-dvt.dtb \
 			sdm845-4k-panel-mtp.dtb \
 			sdm845-4k-panel-cdp.dtb \
 			sdm845-4k-panel-qrd.dtb \
-			sdm845-interposer-sdm670-mtp.dtb \
-			sdm845-interposer-sdm670-cdp.dtb \
 			sdm845-v2.1-rb3.dtb \
-			sdm845-v2.1-mtp.dtb
 			beryllium-p0-v2.dtb \
 			beryllium-p0-v2.1.dtb \
 			beryllium-p1-v2.1.dtb \
@@ -95,15 +90,10 @@ else
 			sdm845-v2-cdp.dtb \
 			sdm845-qrd.dtb \
 			sdm845-v2-qrd.dtb \
-			sdm845-v2-qvr-evt.dtb \
-			sdm845-v2-qvr-dvt.dtb \
 			sdm845-4k-panel-mtp.dtb \
 			sdm845-4k-panel-cdp.dtb \
 			sdm845-4k-panel-qrd.dtb \
-			sdm845-interposer-sdm670-mtp.dtb \
-			sdm845-interposer-sdm670-cdp.dtb \
 			sdm845-v2.1-rb3.dtb \
-			sdm845-v2.1-mtp.dtb
 			dipper-p0-v2.dtb \
 			dipper-p0-v2.1.dtb \
 			dipper-p1-v2-cn.dtb \
@@ -144,7 +134,7 @@ else
 			equuleus-p1-v2.1.dtb \
 			equuleus-mp-v2.dtb \
 			equuleus-mp-v2.1.dtb
-	endif
+		endif
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
