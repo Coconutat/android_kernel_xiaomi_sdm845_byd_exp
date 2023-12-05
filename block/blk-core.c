@@ -33,7 +33,7 @@
 #include <linux/ratelimit.h>
 #include <linux/pm_runtime.h>
 #include <linux/blk-cgroup.h>
-#include <linux/mi_io.h>
+#include <linux/psi.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
@@ -732,6 +732,9 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id)
 
 	kobject_init(&q->kobj, &blk_queue_ktype);
 
+#ifdef CONFIG_BLK_DEV_IO_TRACE
+	mutex_init(&q->blk_trace_mutex);
+#endif
 	mutex_init(&q->sysfs_lock);
 	spin_lock_init(&q->__queue_lock);
 
@@ -2101,10 +2104,10 @@ EXPORT_SYMBOL(generic_make_request);
  */
 blk_qc_t submit_bio(struct bio *bio)
 {
+	bool workingset_read = false;
+	unsigned long pflags;
 	blk_qc_t ret;
-	u64 s_running_time, s_runnable_time;
-	unsigned long s_total_time;
-	unsigned int delta;
+
 	/*
 	 * If it's a regular read/write or a barrier with data attached,
 	 * go through the normal accounting stuff before submission.
@@ -2120,6 +2123,8 @@ blk_qc_t submit_bio(struct bio *bio)
 		if (op_is_write(bio_op(bio))) {
 			count_vm_events(PGPGOUT, count);
 		} else {
+			if (bio_flagged(bio, BIO_WORKINGSET))
+				workingset_read = true;
 			task_io_account_read(bio->bi_iter.bi_size);
 			count_vm_events(PGPGIN, count);
 		}
@@ -2135,20 +2140,19 @@ blk_qc_t submit_bio(struct bio *bio)
 		}
 	}
 
-	s_total_time = jiffies;
-	s_running_time = current->se.sum_exec_runtime;
-	s_runnable_time = current->sched_info.run_delay;
+	/*
+	 * If we're reading data that is part of the userspace
+	 * workingset, count submission time as memory stall. When the
+	 * device is congested, or the submitting cgroup IO-throttled,
+	 * submission can be a significant part of overall IO time.
+	 */
+	if (workingset_read)
+		psi_memstall_enter(&pflags);
+
 	ret = generic_make_request(bio);
-	if (IO_SHOW_LOG) {
-		delta = jiffies_to_msecs(jiffies - s_total_time);
-		if (delta > IO_BLK_SUBMIT_BIO_LEVEL) {
-			pr_info("Slow IO BLK|Submit_bio:  %d(%s) prio(%d|%d), total_time(%dms) running_time(%lluns) runnable(%lluns)\n",
-				current->pid, current->comm,
-				current->policy, current->prio, delta,
-				current->se.sum_exec_runtime - s_running_time,
-				current->sched_info.run_delay - s_runnable_time);
-		}
-	}
+
+	if (workingset_read)
+		psi_memstall_leave(&pflags);
 
 	return ret;
 }

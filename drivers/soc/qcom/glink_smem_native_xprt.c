@@ -701,11 +701,12 @@ static int fifo_tx(struct edge_info *einfo, const void *data, int len)
 	DEFINE_WAIT(wait);
 
 	spin_lock_irqsave(&einfo->write_lock, flags);
-	while (fifo_write_avail(einfo) < len) {
+	while (fifo_write_avail(einfo) < len || einfo->tx_blocked_signal_sent) {
 		send_tx_blocked_signal(einfo);
 		prepare_to_wait(&einfo->tx_blocked_queue, &wait,
 							TASK_UNINTERRUPTIBLE);
-		if (fifo_write_avail(einfo) < len && !einfo->in_ssr) {
+		if ((fifo_write_avail(einfo) < len
+			|| einfo->tx_blocked_signal_sent) && !einfo->in_ssr) {
 			spin_unlock_irqrestore(&einfo->write_lock, flags);
 			schedule();
 			spin_lock_irqsave(&einfo->write_lock, flags);
@@ -948,6 +949,7 @@ static void __rx_worker(struct edge_info *einfo, bool atomic_ctx)
 	char trash[FIFO_ALIGNMENT];
 	struct deferred_cmd *d_cmd;
 	void *cmd_data;
+	bool ret = false;
 
 	rcu_id = srcu_read_lock(&einfo->use_ref);
 
@@ -956,11 +958,18 @@ static void __rx_worker(struct edge_info *einfo, bool atomic_ctx)
 		return;
 	}
 
+	spin_lock_irqsave(&einfo->rx_lock, flags);
 	if (!einfo->rx_fifo) {
-		if (!get_rx_fifo(einfo))
+		ret = get_rx_fifo(einfo);
+		if (!ret) {
+			spin_unlock_irqrestore(&einfo->rx_lock, flags);
+			srcu_read_unlock(&einfo->use_ref, rcu_id);
 			return;
-		einfo->xprt_if.glink_core_if_ptr->link_up(&einfo->xprt_if);
+		}
 	}
+	spin_unlock_irqrestore(&einfo->rx_lock, flags);
+	if (ret)
+		einfo->xprt_if.glink_core_if_ptr->link_up(&einfo->xprt_if);
 
 	if ((atomic_ctx) && ((einfo->tx_resume_needed)
 	    || (einfo->tx_blocked_signal_sent)
@@ -1568,14 +1577,22 @@ static void tx_cmd_ch_remote_close_ack(struct glink_transport_if *if_ptr,
 static void subsys_up(struct glink_transport_if *if_ptr)
 {
 	struct edge_info *einfo;
+	unsigned long flags;
+	bool ret = false;
 
 	einfo = container_of(if_ptr, struct edge_info, xprt_if);
 	einfo->in_ssr = false;
+	spin_lock_irqsave(&einfo->rx_lock, flags);
 	if (!einfo->rx_fifo) {
-		if (!get_rx_fifo(einfo))
+		ret = get_rx_fifo(einfo);
+		if (!ret) {
+			spin_unlock_irqrestore(&einfo->rx_lock, flags);
 			return;
-		einfo->xprt_if.glink_core_if_ptr->link_up(&einfo->xprt_if);
+		}
 	}
+	spin_unlock_irqrestore(&einfo->rx_lock, flags);
+	if (ret)
+		einfo->xprt_if.glink_core_if_ptr->link_up(&einfo->xprt_if);
 }
 
 /**
@@ -2078,7 +2095,7 @@ static int tx_data(struct glink_transport_if *if_ptr, uint16_t cmd_id,
 	}
 
 	/* Need enough space to write the command and some data */
-	if (size <= sizeof(cmd)) {
+	if (size <= sizeof(cmd) || einfo->tx_blocked_signal_sent) {
 		einfo->tx_resume_needed = true;
 		send_tx_blocked_signal(einfo);
 		spin_unlock_irqrestore(&einfo->write_lock, flags);

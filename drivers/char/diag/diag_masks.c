@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -202,7 +202,7 @@ static void diag_send_log_mask_update(uint8_t peripheral, int equip_id)
 		}
 
 		memcpy(buf, &ctrl_pkt, header_len);
-		if (mask_size > 0 && mask_size <= LOG_MASK_SIZE)
+		if (mask_size > 0)
 			memcpy(buf + header_len, mask->ptr, mask_size);
 		mutex_unlock(&mask->lock);
 
@@ -304,7 +304,7 @@ static void diag_send_event_mask_update(uint8_t peripheral)
 				buf = temp;
 			}
 		}
-		if (num_bytes > 0 && num_bytes < mask_info->mask_len)
+		if (num_bytes > 0)
 			memcpy(buf + sizeof(header), mask_info->ptr, num_bytes);
 		else {
 			pr_err("diag: num_bytes(%d) is not satisfying length condition\n",
@@ -896,7 +896,8 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 		goto end;
 	if (mask_size + write_len > dest_len)
 		mask_size = dest_len - write_len;
-	memcpy(dest_buf + write_len, src_buf + header_len, mask_size);
+	if (mask_size && src_len >= header_len + mask_size)
+		memcpy(dest_buf + write_len, src_buf + header_len, mask_size);
 	write_len += mask_size;
 	for (i = 0; i < NUM_MD_SESSIONS; i++) {
 		if (i == APPS_DATA)
