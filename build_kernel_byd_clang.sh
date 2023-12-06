@@ -22,7 +22,7 @@ start_time_sum=$(date +%s)
 
 make ARCH=arm64 O=out CC=clang ursa_xiaomi_sdm845_ksu_defconfig
 # 定义编译线程数
-make ARCH=arm64 O=out CC=clang -j12 2>&1 | tee kernel_log-${start_time}.txt
+make ARCH=arm64 O=out CC=clang -j24 2>&1 | tee kernel_log-${start_time}.txt
 
 end_time_sum=$(date +%s)
 
