@@ -1,7 +1,7 @@
 /*
  * TEE driver for goodix fingerprint sensor
  * Copyright (C) 2016 Goodix
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -491,31 +491,14 @@ static long gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 }
 #endif /*CONFIG_COMPAT*/
 
-static void notification_work(struct work_struct *work)
-{
-	pr_debug("%s unblank\n", __func__);
-	dsi_bridge_interface_enable(FP_UNLOCK_REJECTION_TIMEOUT);
-}
-
 static irqreturn_t gf_irq(int irq, void *handle)
 {
-	struct gf_dev *gf_dev = &gf;
 #if defined(GF_NETLINK_ENABLE)
 	char temp[4] = { 0x0 };
-	uint32_t key_input = 0;
 	temp[0] = GF_NET_EVENT_IRQ;
 	pr_debug("%s enter\n", __func__);
 	__pm_wakeup_event(&fp_wakelock, WAKELOCK_HOLD_TIME);
 	sendnlmsg(temp);
-	if ((gf_dev->wait_finger_down == true) && (gf_dev->device_available == 1) && (gf_dev->fb_black == 1)) {
-		key_input = KEY_RIGHT;
-		input_report_key(gf_dev->input, key_input, 1);
-		input_sync(gf_dev->input);
-		input_report_key(gf_dev->input, key_input, 0);
-		input_sync(gf_dev->input);
-		gf_dev->wait_finger_down = false;
-		schedule_work(&gf_dev->work);
-	}
 #elif defined (GF_FASYNC)
 	struct gf_dev *gf_dev = &gf;
 
@@ -680,6 +663,38 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+static ssize_t proximity_state_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct gf_dev *gf_dev = dev_get_drvdata(dev);
+	int rc, val;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	gf_dev->proximity_state = !!val;
+
+	if (gf_dev->proximity_state) {
+		gf_disable_irq(gf_dev);
+	} else {
+		gf_enable_irq(gf_dev);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(proximity_state, S_IWUSR, NULL, proximity_state_set);
+
+static struct attribute *attributes[] = {
+	&dev_attr_proximity_state.attr,
+	NULL
+};
+
+static const struct attribute_group attribute_group = {
+	.attrs = attributes,
+};
+
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
 {
@@ -698,8 +713,6 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		switch (blank) {
 		case DRM_BLANK_POWERDOWN:
 			if (gf_dev->device_available == 1) {
-				gf_dev->fb_black = 1;
-				gf_dev->wait_finger_down = true;
 #if defined(GF_NETLINK_ENABLE)
 				temp[0] = GF_NET_EVENT_FB_BLACK;
 				sendnlmsg(temp);
@@ -712,7 +725,6 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 			break;
 		case DRM_BLANK_UNBLANK:
 			if (gf_dev->device_available == 1) {
-				gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
 				temp[0] = GF_NET_EVENT_FB_UNBLACK;
 				sendnlmsg(temp);
@@ -743,6 +755,7 @@ static int gf_probe(struct platform_device *pdev)
 #endif
 {
 	struct gf_dev *gf_dev = &gf;
+	struct device *dev = &pdev->dev;
 	int status = -EINVAL;
 	unsigned long minor;
 	int i;
@@ -758,9 +771,6 @@ static int gf_probe(struct platform_device *pdev)
 	gf_dev->reset_gpio = -EINVAL;
 	gf_dev->pwr_gpio = -EINVAL;
 	gf_dev->device_available = 0;
-	gf_dev->fb_black = 0;
-	gf_dev->wait_finger_down = false;
-	INIT_WORK(&gf_dev->work, notification_work);
 
 	if (gf_parse_dts(gf_dev))
 		goto error_hw;
@@ -826,6 +836,14 @@ static int gf_probe(struct platform_device *pdev)
 	drm_register_client(&gf_dev->notifier);
 
 	gf_dev->irq = gf_irq_num(gf_dev);
+
+	dev_set_drvdata(dev, gf_dev);
+
+	status = sysfs_create_group(&dev->kobj, &attribute_group);
+	if (status) {
+		dev_err(dev, "could not create sysfs\n");
+		goto error_hw;
+	}
 
 	wakeup_source_init(&fp_wakelock, "fp_wakelock");
 	pr_debug("version V%d.%d.%02d\n", VER_MAJOR, VER_MINOR, PATCH_LEVEL);

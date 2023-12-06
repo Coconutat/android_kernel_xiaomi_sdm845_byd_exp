@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018,2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -94,8 +94,6 @@ struct cpu_gpu_lock {
 };
 
 #define A6XX_CP_CTXRECORD_MAGIC_REF     0xAE399D6EUL
-/* Size of each CP preemption record */
-#define A6XX_CP_CTXRECORD_SIZE_IN_BYTES     (2112 * 1024)
 /* Size of the preemption counter block (in bytes) */
 #define A6XX_CP_CTXRECORD_PREEMPTION_COUNTER_SIZE   (16 * 4)
 /* Size of the user context record block (in bytes) */
@@ -103,7 +101,7 @@ struct cpu_gpu_lock {
 /* Size of the performance counter save/restore block (in bytes) */
 #define A6XX_CP_PERFCOUNTER_SAVE_RESTORE_SIZE   (4 * 1024)
 
-#define A6XX_CP_RB_CNTL_DEFAULT ((1 << 27) | ((ilog2(4) << 8) & 0x1F00) | \
+#define A6XX_CP_RB_CNTL_DEFAULT (((ilog2(4) << 8) & 0x1F00) | \
 		(ilog2(KGSL_RB_DWORDS >> 1) & 0x3F))
 
 /* Preemption functions */

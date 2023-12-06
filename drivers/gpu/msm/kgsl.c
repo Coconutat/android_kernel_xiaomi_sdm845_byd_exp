@@ -4805,7 +4805,6 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 		device->id, device->reg_phys, device->reg_len);
 
 	rwlock_init(&device->context_lock);
-	spin_lock_init(&device->submit_lock);
 
 	setup_timer(&device->idle_timer, kgsl_timer, (unsigned long) device);
 
@@ -4862,7 +4861,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	}
 
 	device->events_wq = alloc_workqueue("kgsl-events",
-		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
 
 	/* Initialize the snapshot engine */
 	kgsl_device_snapshot_init(device);
@@ -4940,7 +4939,7 @@ static void kgsl_core_exit(void)
 static int __init kgsl_core_init(void)
 {
 	int result = 0;
-	struct sched_param param = { .sched_priority = 2 };
+	struct sched_param param = { .sched_priority = 6 };
 
 	/* alloc major and minor device numbers */
 	result = alloc_chrdev_region(&kgsl_driver.major, 0, KGSL_DEVICE_MAX,

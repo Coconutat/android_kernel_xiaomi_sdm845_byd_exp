@@ -18,7 +18,7 @@
  *
  *
  * Copyright (c) 2015 Fingerprint Cards AB <tech@fingerprints.com>
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License Version 2
@@ -28,6 +28,7 @@
 #include <linux/atomic.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/hwinfo.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -55,7 +56,6 @@
 #define PWR_ON_SLEEP_MAX_US (PWR_ON_SLEEP_MIN_US + 900)
 
 #define NUM_PARAMS_REG_ENABLE_SET 2
-
 
 static const char * const pctl_names[] = {
 	"fpc1020_reset_reset",
@@ -93,8 +93,6 @@ struct fpc1020_data {
 	int irqf;
 	struct notifier_block fb_notifier;
 	bool fb_black;
-	bool wait_finger_down;
-	struct work_struct work;
 };
 
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle);
@@ -440,8 +438,10 @@ static ssize_t device_prepare_set(struct device *dev,
 
 	if (!strncmp(buf, "enable", strlen("enable"))) {
 		rc = device_prepare(fpc1020, true);
+		update_hardware_info(TYPE_FP, 1);
 	} else if (!strncmp(buf, "disable", strlen("disable"))) {
 		rc = device_prepare(fpc1020, false);
+		update_hardware_info(TYPE_FP, 0);
 	} else {
 		return -EINVAL;
 	}
@@ -505,24 +505,6 @@ static ssize_t irq_ack(struct device *dev,
 }
 static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
 
-static ssize_t fingerdown_wait_set(struct device *dev,
-	struct device_attribute *attr,
-	const char *buf, size_t count)
-{
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-
-	dev_dbg(fpc1020->dev, "%s\n", __func__);
-	if (!strncmp(buf, "enable", strlen("enable")) && fpc1020->prepared)
-		fpc1020->wait_finger_down = true;
-	else if (!strncmp(buf, "disable", strlen("disable")) && fpc1020->prepared)
-		fpc1020->wait_finger_down = false;
-	else
-		return -EINVAL;
-
-	return count;
-}
-static DEVICE_ATTR(fingerdown_wait, S_IWUSR, NULL, fingerdown_wait_set);
-
 static ssize_t irq_enable_set(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
@@ -555,17 +537,8 @@ static ssize_t screen_status_get(struct device *dev, struct device_attribute *at
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", retval);
 }
+
 static DEVICE_ATTR(screen_status, S_IRUSR | S_IRGRP, screen_status_get, NULL);
-
-static ssize_t vreg_op_cnt_set(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t count)
-{
-	char value[64] = {0};
-
-	snprintf(value, sizeof(value), "%s", buf);
-	return count;
-}
-static DEVICE_ATTR(vreg_op_cnt, S_IWUSR, NULL, vreg_op_cnt_set);
 
 static struct attribute *attributes[] = {
 	&dev_attr_pinctl_set.attr,
@@ -577,21 +550,12 @@ static struct attribute *attributes[] = {
 	&dev_attr_irq_enable.attr,
 	&dev_attr_irq.attr,
 	&dev_attr_screen_status.attr,
-	&dev_attr_fingerdown_wait.attr,
-	&dev_attr_vreg_op_cnt.attr,
 	NULL
 };
 
 static const struct attribute_group attribute_group = {
 	.attrs = attributes,
 };
-
-static void notification_work(struct work_struct *work)
-{
-	pr_debug("%s: unblank\n", __func__);
-	dsi_bridge_interface_enable(FP_UNLOCK_REJECTION_TIMEOUT);
-}
-
 
 static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 {
@@ -604,11 +568,6 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 	}
 
 	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
-	if (fpc1020->wait_finger_down && fpc1020->fb_black && fpc1020->prepared) {
-		pr_debug("%s enter\n", __func__);
-		fpc1020->wait_finger_down = false;
-		schedule_work(&fpc1020->work);
-	}
 
 	return IRQ_HANDLED;
 }
@@ -676,7 +635,6 @@ static int fpc_fb_notif_callback(struct notifier_block *nb,
 	}
 	return NOTIFY_OK;
 }
-
 
 static struct notifier_block fpc_notif_block = {
 	.notifier_call = fpc_fb_notif_callback,
@@ -760,8 +718,6 @@ static int fpc1020_probe(struct platform_device *pdev)
 	}
 
 	fpc1020->fb_black = false;
-	fpc1020->wait_finger_down = false;
-	INIT_WORK(&fpc1020->work, notification_work);
 	fpc1020->fb_notifier = fpc_notif_block;
 	drm_register_client(&fpc1020->fb_notifier);
 

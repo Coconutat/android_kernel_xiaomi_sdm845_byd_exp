@@ -1067,7 +1067,7 @@ static int a6xx_post_start(struct adreno_device *adreno_dev)
 
 	rb->_wptr = rb->_wptr - (42 - (cmds - start));
 
-	ret = adreno_ringbuffer_submit_spin_nosync(rb, NULL, 2000);
+	ret = adreno_ringbuffer_submit_spin(rb, NULL, 2000);
 	if (ret)
 		adreno_spin_idle_debug(adreno_dev,
 			"hw preemption initialization failed to idle\n");
@@ -1174,7 +1174,7 @@ static int _load_firmware(struct kgsl_device *device, const char *fwfile,
 	if (!ret) {
 		memcpy(firmware->memdesc.hostptr, &fw->data[4], fw->size - 4);
 		firmware->size = (fw->size - 4) / sizeof(uint32_t);
-		firmware->version = adreno_get_ucode_version((u32 *)fw->data);
+		firmware->version = *(unsigned int *)&fw->data[4];
 	}
 
 	release_firmware(fw);
@@ -1641,7 +1641,7 @@ static int a6xx_gfx_rail_on(struct kgsl_device *device)
 	unsigned int perf_idx;
 	int ret;
 
-	perf_idx = pwr->num_pwrlevels - pwr->default_pwrlevel - 1;
+	perf_idx = pwr->num_pwrlevels - 1;
 	default_opp = &gmu->rpmh_votes.gx_votes[perf_idx];
 
 	kgsl_gmu_regwrite(device, A6XX_GMU_BOOT_SLUMBER_OPTION,
@@ -1670,8 +1670,8 @@ static int a6xx_notify_slumber(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct gmu_device *gmu = &device->gmu;
-	int bus_level = pwr->pwrlevels[pwr->default_pwrlevel].bus_freq;
-	int perf_idx = gmu->num_gpupwrlevels - pwr->default_pwrlevel - 1;
+	int bus_level = pwr->pwrlevels[pwr->num_pwrlevels - 1].bus_freq;
+	int perf_idx = gmu->num_gpupwrlevels - 1;
 	int ret, state;
 
 	/* Disable the power counter so that the GMU is not busy */
@@ -2372,7 +2372,7 @@ static int a6xx_rpmh_gpu_pwrctrl(struct adreno_device *adreno_dev,
 static int a6xx_reset(struct kgsl_device *device, int fault)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
-	int ret = -EINVAL;
+	int ret;
 	int i = 0;
 
 	/* Use the regular reset sequence for No GMU */
@@ -2418,14 +2418,7 @@ static int a6xx_reset(struct kgsl_device *device, int fault)
 		/* since device is officially off now clear start bit */
 		clear_bit(ADRENO_DEVICE_STARTED, &adreno_dev->priv);
 
-		/* Keep trying to start the device until it works */
-		for (i = 0; i < NUM_TIMES_RESET_RETRY; i++) {
-			ret = adreno_start(device, 0);
-			if (!ret)
-				break;
-
-			msleep(20);
-		}
+		ret = adreno_start(device, 0);
 	}
 
 	clear_bit(ADRENO_DEVICE_HARD_RESET, &adreno_dev->priv);
@@ -2433,20 +2426,16 @@ static int a6xx_reset(struct kgsl_device *device, int fault)
 	if (ret)
 		return ret;
 
-	if (i != 0)
-		KGSL_DRV_WARN(device, "Device hard reset tried %d tries\n", i);
+	kgsl_pwrctrl_change_state(device, KGSL_STATE_ACTIVE);
 
 	/*
-	 * If active_cnt is non-zero then the system was active before
-	 * going into a reset - put it back in that state
+	 * If active_cnt is zero, there is no need to keep the GPU active. So,
+	 * we should transition to SLUMBER.
 	 */
+	if (!atomic_read(&device->active_cnt))
+		kgsl_pwrctrl_change_state(device, KGSL_STATE_SLUMBER);
 
-	if (atomic_read(&device->active_cnt))
-		kgsl_pwrctrl_change_state(device, KGSL_STATE_ACTIVE);
-	else
-		kgsl_pwrctrl_change_state(device, KGSL_STATE_NAP);
-
-	return ret;
+	return 0;
 }
 
 static void a6xx_cp_hw_err_callback(struct adreno_device *adreno_dev, int bit)
