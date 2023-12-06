@@ -5,8 +5,7 @@ echo "开始清理编译残留..."
 start_time_sum=$(date +%s)
 
 rm -rf out
-make clean
-make mrproper
+make ARCH=arm64 distclean
 
 end_time_sum=$(date +%s)
 
