@@ -1709,28 +1709,18 @@ static void android_disconnect(struct usb_gadget *gadget)
 static const struct usb_gadget_driver configfs_driver_template = {
 	.bind           = configfs_composite_bind,
 	.unbind         = configfs_composite_unbind,
-<<<<<<< HEAD
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	.setup          = android_setup,
 	.reset          = android_disconnect,
 	.disconnect     = android_disconnect,
 #else
-	.setup          = composite_setup,
-	.reset          = composite_disconnect,
-	.disconnect     = composite_disconnect,
-#endif
-	.suspend	= composite_suspend,
-	.resume		= composite_resume,
-=======
-
 	.setup          = configfs_composite_setup,
 	.reset          = configfs_composite_disconnect,
 	.disconnect     = configfs_composite_disconnect,
-
+#endif
 	.suspend	= configfs_composite_suspend,
 	.resume		= configfs_composite_resume,
->>>>>>> aa919ef9a34b... usb: gadget: configfs: fix concurrent issue between composite APIs
-
+	
 	.max_speed	= USB_SPEED_SUPER,
 	.driver = {
 		.owner          = THIS_MODULE,
