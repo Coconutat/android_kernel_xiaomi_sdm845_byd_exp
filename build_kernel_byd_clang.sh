@@ -53,6 +53,7 @@ if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
 	rm -rf tools/AnyKernel3/Image.gz-dtb
 	echo "***Sucessfully built kernel...***"
 	echo " "
+	bash syncanykernel3.sh
 	exit 0
 else
 	echo " "
