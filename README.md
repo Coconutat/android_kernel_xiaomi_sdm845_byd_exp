@@ -11,7 +11,7 @@
  **NOT SUPPORT Mi 8 Standard Edition(dipper)!!!**    
  ***
  Based OS Version:Android Q Version  
- Based CAF Tag:LA.UM.6.3.r4-03000-sdm845.0  
+ Based CAF Tag:LA.UM.8.3.r1-05800-sdm845.0   
  ***
  **Kernel Feature**:  
    + Support **Mi 8 Explorer Edition & UD**  
@@ -19,6 +19,7 @@
    + Support **Wireguard**    
  ***
 ![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)  
+**[下载分析](https://gra.caldis.me/?url=https://github.com/Coconutat/android_kernel_xiaomi_sdm845_byd_exp)**  
  ***  
  Kernel Use compiler is [Proton-Clang](https://github.com/kdrag0n/proton-clang).
  ***  
