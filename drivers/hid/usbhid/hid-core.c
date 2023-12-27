@@ -1275,6 +1275,12 @@ static struct hid_ll_driver usb_hid_driver = {
 	.idle = usbhid_idle,
 };
 
+bool hid_is_usb(const struct hid_device *hdev)
+{
+	return hdev->ll_driver == &usb_hid_driver;
+}
+EXPORT_SYMBOL_GPL(hid_is_usb);
+
 static int usbhid_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {
 	struct usb_host_interface *interface = intf->cur_altsetting;

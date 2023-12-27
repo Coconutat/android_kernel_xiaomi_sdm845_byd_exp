@@ -28,6 +28,9 @@
 #define MS_SURFACE_DIAL		BIT(6)
 #define MS_QUIRK_FF		BIT(7)
 
+/* Old Kernel Can't define this in hid.h */
+#define HID_QUIRK_INPUT_PER_APP			BIT(11)
+
 struct ms_data {
 	unsigned long quirks;
 	struct hid_device *hdev;
