@@ -21,8 +21,9 @@
 ![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)  
 **[下载分析](https://gra.caldis.me/?url=https://github.com/Coconutat/android_kernel_xiaomi_sdm845_byd_exp)**  
  ***  
- Kernel Use compiler is [Proton-Clang](https://github.com/kdrag0n/proton-clang).
- OR You can use [ZyC_Clang 16](https://github.com/ZyCromerZ/Clang/releases/tag/16.0.6-20231003-release).
+ Recommended cross compiler is [Proton-Clang](https://github.com/kdrag0n/proton-clang).
+ For Clang 16 : You can use [ZyC_Clang 16](https://github.com/ZyCromerZ/Clang/releases/tag/16.0.6-20231003-release).
+ For Clang 18 : You can use [ZyC_Clang 18](https://github.com/ZyCromerZ/Clang/releases/).
  ***  
  When you compile kernel,you need make clean.
  ```

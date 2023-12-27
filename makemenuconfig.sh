@@ -1,7 +1,7 @@
 #!/bin/bash
 #设置环境
 
-export PATH=$PATH:$(pwd)/../Compiler/ZyC_Clang/bin
+export PATH=$PATH:$(pwd)/../Compiler/ZyC_Clang_18/bin
 export CC=clang
 export CLANG_TRIPLE=aarch64-linux-gnu-
 export CROSS_COMPILE=aarch64-linux-gnu-
