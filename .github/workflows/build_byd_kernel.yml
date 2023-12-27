@@ -1,4 +1,4 @@
-name: Build Huawei-hi3660-KSU-Kernel
+name: Build BYD-Kernel For Xiaomi 8 EE & UD
 on:
   workflow_dispatch:
   schedule:
