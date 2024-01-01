@@ -47,6 +47,8 @@ jobs:
        bash syncanykernel3.sh
        bash synckernelsu_all.sh
        bash build_kernel_byd_git_clang.sh
+       rm -rf tools/AnyKernel3/.git
+       rm -rf tools/AnyKernel3/.github
 
 
     - name: Upload BYD-Kernel
