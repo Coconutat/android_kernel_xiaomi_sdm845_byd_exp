@@ -18,11 +18,11 @@
  ***
  **Kernel Feature**:  
    + Support **Mi 8 Explorer Edition & UD**  
-   + Support **KernelSU**  
+   + Support **KernelSU-Next**(Since KernelSU not support non-GKI Kernel then we change to KernelSU-Next.)  
    + Support **Wireguard**    
  ***
 ![GitHub Downloads](https://img.shields.io/github/downloads/Coconutat/android_kernel_xiaomi_sdm845_exp/total?labelColor=%2300CED1&color=%23FF8C00)  
-**[下载分析](https://gra.caldis.me/?url=https://github.com/Coconutat/android_kernel_xiaomi_sdm845_byd_exp)**  
+**[下载分析](https://tooomm.github.io/github-release-stats/?username=Coconutat&repository=android_kernel_xiaomi_sdm845_byd_exp)**  
  ***  
  Recommended cross compiler is [Proton-Clang](https://github.com/kdrag0n/proton-clang).  
  For Clang 16 : You can use [ZyC_Clang 16](https://github.com/ZyCromerZ/Clang/releases/tag/16.0.6-20231003-release).  
